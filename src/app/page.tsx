@@ -72,6 +72,17 @@ export default function Home() {
   const [actionItems, setActionItems] = useState<ActionItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  
+  // Performance metrics state for dynamic updates
+  const [performanceMetrics, setPerformanceMetrics] = useState({
+    callStats: { last: '82', current: '87' },
+    averageTalkTime: { last: '6:45', current: '5:30' },
+    qaScore: { last: '88', current: '92' },
+    absenteeism: { last: '3', current: '1' },
+    lateness: { last: '4 times', current: '1 time' },
+    breakExceeds: { last: '6 times', current: '2 times' },
+    salesPerformance: { last: '78', current: '87' }
+  });
   const [showActionItemForm, setShowActionItemForm] = useState<boolean>(false);
   const [newActionItem, setNewActionItem] = useState({ 
     title: '', 
@@ -134,6 +145,40 @@ const [agents, setAgents] = useState<AgentUser[]>([]);
     } catch (error) {
       console.error('Error refreshing sessions:', error);
     }
+  };
+
+  // Helper function to calculate performance summary
+  const calculatePerformanceSummary = () => {
+    const metrics = [
+      { name: 'Call Stats', last: parseFloat(performanceMetrics.callStats.last), current: parseFloat(performanceMetrics.callStats.current) },
+      { name: 'QA Score', last: parseFloat(performanceMetrics.qaScore.last), current: parseFloat(performanceMetrics.qaScore.current) },
+      { name: 'Sales Performance', last: parseFloat(performanceMetrics.salesPerformance.last), current: parseFloat(performanceMetrics.salesPerformance.current) },
+      { name: 'Absenteeism', last: parseFloat(performanceMetrics.absenteeism.last), current: parseFloat(performanceMetrics.absenteeism.current), inverse: true },
+      { name: 'Lateness', last: parseFloat(performanceMetrics.lateness.last.replace(/\D/g, '')), current: parseFloat(performanceMetrics.lateness.current.replace(/\D/g, '')), inverse: true },
+      { name: 'Break Exceeds', last: parseFloat(performanceMetrics.breakExceeds.last.replace(/\D/g, '')), current: parseFloat(performanceMetrics.breakExceeds.current.replace(/\D/g, '')), inverse: true }
+    ];
+
+    let improved = 0;
+    let stable = 0;
+    let declined = 0;
+
+    metrics.forEach(metric => {
+      if (isNaN(metric.last) || isNaN(metric.current)) return;
+      
+      const change = metric.inverse ? 
+        ((metric.last - metric.current) / metric.last) * 100 : 
+        ((metric.current - metric.last) / metric.last) * 100;
+      
+      if (Math.abs(change) < 2) {
+        stable++;
+      } else if (change > 0) {
+        improved++;
+      } else {
+        declined++;
+      }
+    });
+
+    return { improved, stable, declined };
   };
 
   // Helper function to filter and sort action items
@@ -2107,7 +2152,11 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
                                 type="text"
                                 className="w-24 h-8 px-2 border border-gray-300 rounded text-center text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                 placeholder="85%"
-                                defaultValue="82%"
+                                value={performanceMetrics.callStats.last}
+                                onChange={(e) => setPerformanceMetrics(prev => ({
+                                  ...prev,
+                                  callStats: { ...prev.callStats, last: e.target.value }
+                                }))}
                               />
                             </td>
                             <td className="px-6 py-4 text-center">
@@ -2115,7 +2164,11 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
                                 type="text"
                                 className="w-24 h-8 px-2 border border-gray-300 rounded text-center text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                 placeholder="87%"
-                                defaultValue={agentMetrics?.metrics?.CSAT?.value ? `${Math.round(agentMetrics.metrics.CSAT.value * 20)}%` : '87%'}
+                                value={performanceMetrics.callStats.current}
+                                onChange={(e) => setPerformanceMetrics(prev => ({
+                                  ...prev,
+                                  callStats: { ...prev.callStats, current: e.target.value }
+                                }))}
                               />
                             </td>
                             <td className="px-6 py-4 text-center">
@@ -2136,22 +2189,22 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
                                 type="text"
                                 className="w-24 h-8 px-2 border border-gray-300 rounded text-center text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                 placeholder="6:45"
-                                defaultValue="6:45"
+                                value={performanceMetrics.averageTalkTime.last}
+                                onChange={(e) => setPerformanceMetrics(prev => ({
+                                  ...prev,
+                                  averageTalkTime: { ...prev.averageTalkTime, last: e.target.value }
+                                }))}
                               />
                             </td>
                             <td className="px-6 py-4 text-center">
                               <input
                                 type="text"
                                 className="w-24 h-8 px-2 border border-gray-300 rounded text-center text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                defaultValue={(() => {
-                                  const aht = agentMetrics?.metrics?.AHT?.value;
-                                  if (aht) {
-                                    const mins = Math.floor(aht / 60);
-                                    const secs = aht % 60;
-                                    return `${mins}:${secs.toString().padStart(2, '0')}`;
-                                  }
-                                  return '5:30';
-                                })()}
+                                value={performanceMetrics.averageTalkTime.current}
+                                onChange={(e) => setPerformanceMetrics(prev => ({
+                                  ...prev,
+                                  averageTalkTime: { ...prev.averageTalkTime, current: e.target.value }
+                                }))}
                               />
                             </td>
                             <td className="px-6 py-4 text-center">
@@ -2172,14 +2225,22 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
                                 type="text"
                                 className="w-24 h-8 px-2 border border-gray-300 rounded text-center text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                 placeholder="88%"
-                                defaultValue="88%"
+                                value={performanceMetrics.qaScore.last}
+                                onChange={(e) => setPerformanceMetrics(prev => ({
+                                  ...prev,
+                                  qaScore: { ...prev.qaScore, last: e.target.value }
+                                }))}
                               />
                             </td>
                             <td className="px-6 py-4 text-center">
                               <input
                                 type="text"
                                 className="w-24 h-8 px-2 border border-gray-300 rounded text-center text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                defaultValue={agentMetrics?.metrics?.['Quality Score']?.value ? `${Math.round(agentMetrics.metrics['Quality Score'].value)}%` : '92%'}
+                                value={performanceMetrics.qaScore.current}
+                                onChange={(e) => setPerformanceMetrics(prev => ({
+                                  ...prev,
+                                  qaScore: { ...prev.qaScore, current: e.target.value }
+                                }))}
                               />
                             </td>
                             <td className="px-6 py-4 text-center">
@@ -2200,7 +2261,11 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
                                 type="text"
                                 className="w-24 h-8 px-2 border border-gray-300 rounded text-center text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                 placeholder="2%"
-                                defaultValue="3%"
+                                value={performanceMetrics.absenteeism.last}
+                                onChange={(e) => setPerformanceMetrics(prev => ({
+                                  ...prev,
+                                  absenteeism: { ...prev.absenteeism, last: e.target.value }
+                                }))}
                               />
                             </td>
                             <td className="px-6 py-4 text-center">
@@ -2208,7 +2273,11 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
                                 type="text"
                                 className="w-24 h-8 px-2 border border-gray-300 rounded text-center text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                 placeholder="1%"
-                                defaultValue="1%"
+                                value={performanceMetrics.absenteeism.current}
+                                onChange={(e) => setPerformanceMetrics(prev => ({
+                                  ...prev,
+                                  absenteeism: { ...prev.absenteeism, current: e.target.value }
+                                }))}
                               />
                             </td>
                             <td className="px-6 py-4 text-center">
@@ -2228,7 +2297,11 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
                                 type="text"
                                 className="w-24 h-8 px-2 border border-gray-300 rounded text-center text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                 placeholder="4 times"
-                                defaultValue="4 times"
+                                value={performanceMetrics.lateness.last}
+                                onChange={(e) => setPerformanceMetrics(prev => ({
+                                  ...prev,
+                                  lateness: { ...prev.lateness, last: e.target.value }
+                                }))}
                               />
                             </td>
                             <td className="px-6 py-4 text-center">
@@ -2236,7 +2309,11 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
                                 type="text"
                                 className="w-24 h-8 px-2 border border-gray-300 rounded text-center text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                 placeholder="1 time"
-                                defaultValue="1 time"
+                                value={performanceMetrics.lateness.current}
+                                onChange={(e) => setPerformanceMetrics(prev => ({
+                                  ...prev,
+                                  lateness: { ...prev.lateness, current: e.target.value }
+                                }))}
                               />
                             </td>
                             <td className="px-6 py-4 text-center">
@@ -2256,7 +2333,11 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
                                 type="text"
                                 className="w-24 h-8 px-2 border border-gray-300 rounded text-center text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                 placeholder="6 times"
-                                defaultValue="6 times"
+                                value={performanceMetrics.breakExceeds.last}
+                                onChange={(e) => setPerformanceMetrics(prev => ({
+                                  ...prev,
+                                  breakExceeds: { ...prev.breakExceeds, last: e.target.value }
+                                }))}
                               />
                             </td>
                             <td className="px-6 py-4 text-center">
@@ -2264,7 +2345,11 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
                                 type="text"
                                 className="w-24 h-8 px-2 border border-gray-300 rounded text-center text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                 placeholder="2 times"
-                                defaultValue="2 times"
+                                value={performanceMetrics.breakExceeds.current}
+                                onChange={(e) => setPerformanceMetrics(prev => ({
+                                  ...prev,
+                                  breakExceeds: { ...prev.breakExceeds, current: e.target.value }
+                                }))}
                               />
                             </td>
                             <td className="px-6 py-4 text-center">
@@ -2284,14 +2369,22 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
                                 type="text"
                                 className="w-24 h-8 px-2 border border-gray-300 rounded text-center text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                 placeholder="78%"
-                                defaultValue="78%"
+                                value={performanceMetrics.salesPerformance.last}
+                                onChange={(e) => setPerformanceMetrics(prev => ({
+                                  ...prev,
+                                  salesPerformance: { ...prev.salesPerformance, last: e.target.value }
+                                }))}
                               />
                             </td>
                             <td className="px-6 py-4 text-center">
                               <input
                                 type="text"
                                 className="w-24 h-8 px-2 border border-gray-300 rounded text-center text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                defaultValue={agentMetrics?.metrics?.FCR?.value ? `${Math.round(agentMetrics.metrics.FCR.value)}%` : '87%'}
+                                value={performanceMetrics.salesPerformance.current}
+                                onChange={(e) => setPerformanceMetrics(prev => ({
+                                  ...prev,
+                                  salesPerformance: { ...prev.salesPerformance, current: e.target.value }
+                                }))}
                               />
                             </td>
                             <td className="px-6 py-4 text-center">
@@ -2317,28 +2410,43 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
                         <div className="flex-1">
                           <h4 className="text-lg font-semibold text-gray-900 mb-2">Performance Summary</h4>
                           <p className="text-sm text-gray-700 mb-3">
-                            Overall performance shows improvement in most areas. Focus areas for next session include 
-                            maintaining QA standards while continuing to improve attendance and punctuality.
+                            {(() => {
+                              const summary = calculatePerformanceSummary();
+                              if (summary.improved > summary.declined) {
+                                return "Overall performance shows improvement in most areas. Continue building on the positive momentum.";
+                              } else if (summary.declined > summary.improved) {
+                                return "Performance shows areas that need attention. Focus on the declining metrics for improvement.";
+                              } else {
+                                return "Performance is relatively stable. Look for opportunities to push improvement in key areas.";
+                              }
+                            })()}
                           </p>
                           <div className="flex items-center gap-4 text-sm">
-                            <span className="inline-flex items-center gap-1 text-green-600 font-medium">
-                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                              </svg>
-                              5 Areas Improved
-                            </span>
-                            <span className="inline-flex items-center gap-1 text-gray-600 font-medium">
-                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
-                              </svg>
-                              1 Area Stable
-                            </span>
-                            <span className="inline-flex items-center gap-1 text-red-600 font-medium">
-                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                              </svg>
-                              1 Area Needs Focus
-                            </span>
+                            {(() => {
+                              const summary = calculatePerformanceSummary();
+                              return (
+                                <>
+                                  <span className="inline-flex items-center gap-1 text-green-600 font-medium">
+                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                    </svg>
+                                    {summary.improved} Area{summary.improved !== 1 ? 's' : ''} Improved
+                                  </span>
+                                  <span className="inline-flex items-center gap-1 text-gray-600 font-medium">
+                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
+                                    </svg>
+                                    {summary.stable} Area{summary.stable !== 1 ? 's' : ''} Stable
+                                  </span>
+                                  <span className="inline-flex items-center gap-1 text-red-600 font-medium">
+                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                    </svg>
+                                    {summary.declined} Area{summary.declined !== 1 ? 's' : ''} Need{summary.declined === 1 ? 's' : ''} Focus
+                                  </span>
+                                </>
+                              );
+                            })()}
                           </div>
                         </div>
                       </div>
