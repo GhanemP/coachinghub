@@ -39,15 +39,6 @@ interface ActionItem {
   updatedAt?: string;
 }
 
-interface Goal {
-  id: string;
-  title: string;
-  description?: string;
-  targetValue?: string;
-  currentValue?: string;
-  progress?: number;
-}
-
 interface AgentMetrics {
   metrics: {
     CSAT?: { value: number; unit: string; period: string };
@@ -79,7 +70,6 @@ export default function Home() {
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
   const [previousSessions, setPreviousSessions] = useState<Session[]>([]);
   const [actionItems, setActionItems] = useState<ActionItem[]>([]);
-  const [goals, setGoals] = useState<Goal[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [showActionItemForm, setShowActionItemForm] = useState<boolean>(false);
@@ -144,20 +134,6 @@ const [agents, setAgents] = useState<AgentUser[]>([]);
     } catch (error) {
       console.error('Error refreshing sessions:', error);
     }
-  };
-
-  // Helper function to calculate progress percentage for goals
-  const calculateProgress = (goal: Goal): number => {
-    if (goal.progress !== undefined) return goal.progress;
-    
-    // Try to parse currentValue and targetValue if they're numeric strings
-    const current = parseFloat(goal.currentValue?.replace(/[^\d.]/g, '') || '0');
-    const target = parseFloat(goal.targetValue?.replace(/[^\d.]/g, '') || '0');
-    
-    if (target > 0) {
-      return Math.min(100, Math.round((current / target) * 100));
-    }
-    return 0;
   };
 
   // Helper function to filter and sort action items
@@ -374,16 +350,14 @@ const [agents, setAgents] = useState<AgentUser[]>([]);
       const loadInitialData = async () => {
         try {
           setIsLoading(true);
-          // Load sessions, action items, goals, and agents
-          const [sessionsRes, actionItemsRes, goalsRes, usersRes] = await Promise.all([
+          // Load sessions, action items, and agents
+          const [sessionsRes, actionItemsRes, usersRes] = await Promise.all([
             fetch('/api/session'),
             fetch('/api/action-item'),
-            fetch('/api/goal'),
             fetch('/api/user')
           ]);
           const sessions = await sessionsRes.json();
           const actionItemsData = await actionItemsRes.json();
-          const goalsData = await goalsRes.json();
           const usersData = await usersRes.json();
           
           // Show all sessions (completed, draft, etc.) sorted by most recent first
@@ -393,7 +367,6 @@ const [agents, setAgents] = useState<AgentUser[]>([]);
           
           setPreviousSessions(allSessions);
           setActionItems(actionItemsData);
-          setGoals(goalsData);
           // Only show agents for selection
         setAgents(usersData.filter((u: User) => u.role === 'AGENT'));
         } catch (error) {
@@ -852,15 +825,13 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
       // Refresh data to show completed session in previous sessions
       const loadInitialData = async () => {
         try {
-          const [sessionsRes, goalsRes, actionItemsRes] = await Promise.all([
+          const [sessionsRes, actionItemsRes] = await Promise.all([
             fetch('/api/session'),
-            fetch('/api/goal'),
             fetch('/api/action-item')
           ]);
           
-          const [sessionsData, goalsData, actionItemsData] = await Promise.all([
+          const [sessionsData, actionItemsData] = await Promise.all([
             sessionsRes.json(),
-            goalsRes.json(),
             actionItemsRes.json()
           ]);
           
@@ -870,7 +841,6 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
             .sort((a: Session, b: Session) => new Date(b.scheduledDate).getTime() - new Date(a.scheduledDate).getTime());
           
           setPreviousSessions(allSessions);
-          setGoals(goalsData);
           setActionItems(actionItemsData);
         } catch (error) {
           console.error('Error loading data:', error);
@@ -1630,9 +1600,7 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
                   { id: 'notes', label: 'Session Notes', roles: ['TEAM_LEADER', 'MANAGER', 'ADMIN'] },
                   { id: 'evaluation', label: 'Evaluation', roles: ['TEAM_LEADER', 'MANAGER', 'ADMIN'] },
                   { id: 'scorecard', label: 'Scorecard', roles: ['TEAM_LEADER', 'MANAGER', 'ADMIN'] },
-                  { id: 'performance', label: 'Performance', roles: ['TEAM_LEADER', 'MANAGER', 'ADMIN'] },
-                  { id: 'goals', label: 'Goals & Actions', roles: ['TEAM_LEADER', 'MANAGER', 'ADMIN', 'AGENT'] },
-                  { id: 'templates', label: 'Templates', roles: ['TEAM_LEADER', 'MANAGER', 'ADMIN'] }
+                  { id: 'performance', label: 'Performance', roles: ['TEAM_LEADER', 'MANAGER', 'ADMIN'] }
                 ].filter(tab => tab.roles.includes(session.user?.role || '')).map(tab => (
                   <button
                     key={tab.id}
@@ -1792,60 +1760,6 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
                         </div>
                       </div>
                     )}
-                  </div>
-                )}
-
-                {activeTab === 'goals' && (
-                  <div className="space-y-6">
-                    <div>
-                      <h4 className="font-semibold mb-4 text-gray-800">Current Goals</h4>
-                      {goals.length > 0 ? (
-                        goals.slice(0, 3).map((goal: Goal) => (
-                          <div key={goal.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm mb-3">
-                            <h5 className="font-semibold text-sm mb-2 text-gray-800">{goal.title}</h5>
-                            <p className="text-sm text-gray-600 mb-3">{goal.description}</p>
-                            <div>
-                              <div className="flex justify-between text-sm mb-1">
-                                <span className="text-gray-600">Progress</span>
-                                <span className="font-medium text-gray-800">{calculateProgress(goal)}%</span>
-                              </div>
-                              <div className="h-2 bg-gray-200 rounded-full">
-                                <div 
-                                  className={`h-full bg-indigo-600 rounded-full transition-all duration-300 progress-bar-${Math.round(calculateProgress(goal) / 10) * 10}`}
-                                ></div>
-                              </div>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-                          <h5 className="font-semibold text-sm mb-2 text-gray-800">Improve First Call Resolution</h5>
-                          <p className="text-sm text-gray-600 mb-3">Target: Achieve 85% FCR by end of quarter</p>
-                          <div>
-                            <div className="flex justify-between text-sm mb-1">
-                              <span className="text-gray-600">Progress</span>
-                              <span className="font-medium text-gray-800">78%</span>
-                            </div>
-                            <div className="h-2 bg-gray-200 rounded-full">
-                              <div className="h-full w-3/4 bg-indigo-600 rounded-full"></div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div>
-                      <h4 className="font-semibold mb-4 text-gray-800">Action Items</h4>
-                      <button 
-                        onClick={() => createActionItem('New action item', 'Created from main session')}
-                        className="w-full p-4 border-2 border-dashed border-indigo-300 rounded-lg text-indigo-600 hover:bg-indigo-50 hover:border-indigo-400 transition-colors flex items-center justify-center gap-2"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                        </svg>
-                        Add new action item
-                      </button>
-                    </div>
                   </div>
                 )}
 
@@ -2429,26 +2343,6 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
                         </div>
                       </div>
                     </div>
-                  </div>
-                )}
-
-                {activeTab === 'templates' && (
-                  <div className="grid grid-cols-2 gap-4">
-                    {[
-                      { name: 'Performance Review', desc: 'Comprehensive performance evaluation template' },
-                      { name: 'Skills Development', desc: 'Focus on skill improvement and training needs' },
-                      { name: 'Incident Review', desc: 'Review specific customer incidents or complaints' },
-                      { name: 'Goal Setting', desc: 'Set and track performance goals' }
-                    ].map(template => (
-                      <button
-                        key={template.name}
-                        onClick={() => addQuickNote(`Used ${template.name} template`)}
-                        className="bg-white border border-gray-200 rounded-lg p-4 text-left hover:shadow-md hover:border-indigo-300 hover:bg-indigo-50 transition-all group"
-                      >
-                        <h4 className="font-semibold text-sm mb-2 text-gray-800 group-hover:text-indigo-700">{template.name}</h4>
-                        <p className="text-sm text-gray-600 group-hover:text-indigo-600">{template.desc}</p>
-                      </button>
-                    ))}
                   </div>
                 )}
               </div>
