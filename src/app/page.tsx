@@ -1629,6 +1629,7 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
                 {[
                   { id: 'notes', label: 'Session Notes', roles: ['TEAM_LEADER', 'MANAGER', 'ADMIN'] },
                   { id: 'evaluation', label: 'Evaluation', roles: ['TEAM_LEADER', 'MANAGER', 'ADMIN'] },
+                  { id: 'scorecard', label: 'Scorecard', roles: ['TEAM_LEADER', 'MANAGER', 'ADMIN'] },
                   { id: 'performance', label: 'Performance', roles: ['TEAM_LEADER', 'MANAGER', 'ADMIN'] },
                   { id: 'goals', label: 'Goals & Actions', roles: ['TEAM_LEADER', 'MANAGER', 'ADMIN', 'AGENT'] },
                   { id: 'templates', label: 'Templates', roles: ['TEAM_LEADER', 'MANAGER', 'ADMIN'] }
@@ -1844,6 +1845,322 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
                         </svg>
                         Add new action item
                       </button>
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'scorecard' && selectedAgentId && (
+                  <div className="space-y-6">
+                    {/* Scorecard Header */}
+                    <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-lg p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h3 className="text-xl font-bold text-gray-900 mb-1">Agent Scorecard</h3>
+                          <p className="text-sm text-gray-600">Comprehensive performance evaluation across all key metrics</p>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-3xl font-bold text-indigo-600">{agentMetrics?.overallScore || 87}/100</div>
+                          <div className="text-sm text-gray-600">Overall Score</div>
+                        </div>
+                      </div>
+                      
+                      {/* Monthly Progress Bar */}
+                      <div className="mb-4">
+                        <div className="flex justify-between text-sm text-gray-600 mb-2">
+                          <span>Year-to-Date Progress</span>
+                          <span>{new Date().getFullYear()}</span>
+                        </div>
+                        <div className="flex gap-1">
+                          {Array.from({ length: 12 }, (_, i) => {
+                            const currentMonth = new Date().getMonth();
+                            const isCurrentMonth = i === currentMonth;
+                            const isPastMonth = i < currentMonth;
+                            const score = isPastMonth ? Math.round(75 + Math.random() * 20) : (isCurrentMonth ? (agentMetrics?.overallScore || 87) : 0);
+                            
+                            return (
+                              <div key={i} className="flex-1 relative group">
+                                <div className="h-8 bg-gray-200 rounded-sm relative overflow-hidden">
+                                  {(isPastMonth || isCurrentMonth) && (
+                                    <div 
+                                      className={`h-full transition-all duration-300 ${
+                                        score >= 90 ? 'bg-green-500' :
+                                        score >= 80 ? 'bg-blue-500' :
+                                        score >= 70 ? 'bg-yellow-500' : 'bg-red-500'
+                                      }`}
+                                      style={{ width: `${Math.min(100, score)}%` }}
+                                    />
+                                  )}
+                                </div>
+                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 text-xs text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][i]}
+                                </div>
+                                {(isPastMonth || isCurrentMonth) && (
+                                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 text-xs font-medium text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    {score}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Scorecard Categories */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {/* Service Category */}
+                      <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
+                        <div className="flex items-center justify-between mb-4">
+                          <h4 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                              <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                              </svg>
+                            </div>
+                            Service
+                          </h4>
+                          <span className="text-2xl font-bold text-blue-600">
+                            {agentMetrics?.metrics?.CSAT?.value ? Math.round(agentMetrics.metrics.CSAT.value * 20) : 89}%
+                          </span>
+                        </div>
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Customer Satisfaction</span>
+                            <span className="font-medium">{agentMetrics?.metrics?.CSAT?.value ? Math.round(agentMetrics.metrics.CSAT.value * 20) : 89}%</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Service Quality</span>
+                            <span className="font-medium">{agentMetrics?.metrics?.['Quality Score']?.value ? Math.round(agentMetrics.metrics['Quality Score'].value) : 92}%</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Response Time</span>
+                            <span className="font-medium">Excellent</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Productivity Category */}
+                      <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
+                        <div className="flex items-center justify-between mb-4">
+                          <h4 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                            <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                              <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                              </svg>
+                            </div>
+                            Productivity
+                          </h4>
+                          <span className="text-2xl font-bold text-green-600">
+                            {agentMetrics?.metrics?.FCR?.value ? Math.round(agentMetrics.metrics.FCR.value) : 83}%
+                          </span>
+                        </div>
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">First Call Resolution</span>
+                            <span className="font-medium">{agentMetrics?.metrics?.FCR?.value ? Math.round(agentMetrics.metrics.FCR.value) : 83}%</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Average Handle Time</span>
+                            <span className="font-medium">
+                              {agentMetrics?.metrics?.AHT?.value ? 
+                                `${Math.floor(agentMetrics.metrics.AHT.value / 60)}:${(agentMetrics.metrics.AHT.value % 60).toString().padStart(2, '0')}` : 
+                                '5:23'
+                              }
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Efficiency Score</span>
+                            <span className="font-medium">85%</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Quality Category */}
+                      <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
+                        <div className="flex items-center justify-between mb-4">
+                          <h4 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                            <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                              <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                            </div>
+                            Quality
+                          </h4>
+                          <span className="text-2xl font-bold text-purple-600">
+                            {agentMetrics?.metrics?.['Quality Score']?.value ? Math.round(agentMetrics.metrics['Quality Score'].value) : 92}%
+                          </span>
+                        </div>
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Call Quality</span>
+                            <span className="font-medium">{agentMetrics?.metrics?.['Quality Score']?.value ? Math.round(agentMetrics.metrics['Quality Score'].value) : 92}%</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Compliance</span>
+                            <span className="font-medium">96%</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Documentation</span>
+                            <span className="font-medium">88%</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Assiduity Category */}
+                      <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
+                        <div className="flex items-center justify-between mb-4">
+                          <h4 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                            <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+                              <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                            </div>
+                            Assiduity
+                          </h4>
+                          <span className="text-2xl font-bold text-orange-600">95%</span>
+                        </div>
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Attendance Rate</span>
+                            <span className="font-medium">95%</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Punctuality</span>
+                            <span className="font-medium">92%</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Schedule Adherence</span>
+                            <span className="font-medium">94%</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Performance Breakdown */}
+                    <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                      <h4 className="text-lg font-semibold text-gray-900 mb-4">Detailed Performance Breakdown</h4>
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-gray-50 border-b border-gray-200">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Category</th>
+                              <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900">Jan</th>
+                              <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900">Feb</th>
+                              <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900">Mar</th>
+                              <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900">Apr</th>
+                              <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900">May</th>
+                              <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900">Jun</th>
+                              <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900">Jul</th>
+                              <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900">Current</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200">
+                            <tr className="hover:bg-gray-50">
+                              <td className="px-4 py-3 font-medium text-blue-700">Service</td>
+                              <td className="px-4 py-3 text-center text-sm">85</td>
+                              <td className="px-4 py-3 text-center text-sm">87</td>
+                              <td className="px-4 py-3 text-center text-sm">86</td>
+                              <td className="px-4 py-3 text-center text-sm">89</td>
+                              <td className="px-4 py-3 text-center text-sm">91</td>
+                              <td className="px-4 py-3 text-center text-sm">88</td>
+                              <td className="px-4 py-3 text-center text-sm">90</td>
+                              <td className="px-4 py-3 text-center text-sm font-semibold text-blue-600">
+                                {agentMetrics?.metrics?.CSAT?.value ? Math.round(agentMetrics.metrics.CSAT.value * 20) : 89}
+                              </td>
+                            </tr>
+                            <tr className="hover:bg-gray-50">
+                              <td className="px-4 py-3 font-medium text-green-700">Productivity</td>
+                              <td className="px-4 py-3 text-center text-sm">78</td>
+                              <td className="px-4 py-3 text-center text-sm">80</td>
+                              <td className="px-4 py-3 text-center text-sm">82</td>
+                              <td className="px-4 py-3 text-center text-sm">81</td>
+                              <td className="px-4 py-3 text-center text-sm">84</td>
+                              <td className="px-4 py-3 text-center text-sm">83</td>
+                              <td className="px-4 py-3 text-center text-sm">85</td>
+                              <td className="px-4 py-3 text-center text-sm font-semibold text-green-600">
+                                {agentMetrics?.metrics?.FCR?.value ? Math.round(agentMetrics.metrics.FCR.value) : 83}
+                              </td>
+                            </tr>
+                            <tr className="hover:bg-gray-50">
+                              <td className="px-4 py-3 font-medium text-purple-700">Quality</td>
+                              <td className="px-4 py-3 text-center text-sm">90</td>
+                              <td className="px-4 py-3 text-center text-sm">91</td>
+                              <td className="px-4 py-3 text-center text-sm">89</td>
+                              <td className="px-4 py-3 text-center text-sm">93</td>
+                              <td className="px-4 py-3 text-center text-sm">92</td>
+                              <td className="px-4 py-3 text-center text-sm">91</td>
+                              <td className="px-4 py-3 text-center text-sm">94</td>
+                              <td className="px-4 py-3 text-center text-sm font-semibold text-purple-600">
+                                {agentMetrics?.metrics?.['Quality Score']?.value ? Math.round(agentMetrics.metrics['Quality Score'].value) : 92}
+                              </td>
+                            </tr>
+                            <tr className="hover:bg-gray-50">
+                              <td className="px-4 py-3 font-medium text-orange-700">Assiduity</td>
+                              <td className="px-4 py-3 text-center text-sm">94</td>
+                              <td className="px-4 py-3 text-center text-sm">95</td>
+                              <td className="px-4 py-3 text-center text-sm">93</td>
+                              <td className="px-4 py-3 text-center text-sm">96</td>
+                              <td className="px-4 py-3 text-center text-sm">95</td>
+                              <td className="px-4 py-3 text-center text-sm">94</td>
+                              <td className="px-4 py-3 text-center text-sm">97</td>
+                              <td className="px-4 py-3 text-center text-sm font-semibold text-orange-600">95</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Action Items & Recommendations */}
+                    <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg p-6">
+                      <h4 className="text-lg font-semibold text-indigo-900 mb-4">Scorecard Action Items</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <h5 className="font-semibold text-indigo-800 mb-2">Strengths to Maintain</h5>
+                          <ul className="space-y-1 text-sm text-indigo-700">
+                            <li className="flex items-center gap-2">
+                              <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                              </svg>
+                              Excellent call quality scores
+                            </li>
+                            <li className="flex items-center gap-2">
+                              <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                              </svg>
+                              Strong attendance record
+                            </li>
+                            <li className="flex items-center gap-2">
+                              <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                              </svg>
+                              High customer satisfaction
+                            </li>
+                          </ul>
+                        </div>
+                        <div>
+                          <h5 className="font-semibold text-indigo-800 mb-2">Areas for Improvement</h5>
+                          <ul className="space-y-1 text-sm text-indigo-700">
+                            <li className="flex items-center gap-2">
+                              <svg className="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                              </svg>
+                              Focus on first call resolution
+                            </li>
+                            <li className="flex items-center gap-2">
+                              <svg className="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                              </svg>
+                              Reduce average handle time
+                            </li>
+                            <li className="flex items-center gap-2">
+                              <svg className="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                              </svg>
+                              Improve documentation accuracy
+                            </li>
+                          </ul>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
