@@ -1622,48 +1622,67 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
               </div>
             )}
 
-            {/* Session Content */}
-            <div className="bg-white rounded-xl shadow-sm flex-1 flex flex-col overflow-hidden min-h-0 border border-gray-100">
-              {/* Tabs */}
-              <div className="flex border-b border-gray-100 bg-gray-50/50">
+            {/* Enhanced Session Content */}
+            <div className="bg-white rounded-xl shadow-lg flex-1 flex flex-col overflow-hidden min-h-0 border border-gray-200">
+              {/* Enhanced Tabs */}
+              <div className="flex border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
                 {[
                   { id: 'notes', label: 'Session Notes', roles: ['TEAM_LEADER', 'MANAGER', 'ADMIN'] },
                   { id: 'evaluation', label: 'Evaluation', roles: ['TEAM_LEADER', 'MANAGER', 'ADMIN'] },
+                  { id: 'performance', label: 'Performance', roles: ['TEAM_LEADER', 'MANAGER', 'ADMIN'] },
                   { id: 'goals', label: 'Goals & Actions', roles: ['TEAM_LEADER', 'MANAGER', 'ADMIN', 'AGENT'] },
                   { id: 'templates', label: 'Templates', roles: ['TEAM_LEADER', 'MANAGER', 'ADMIN'] }
                 ].filter(tab => tab.roles.includes(session.user?.role || '')).map(tab => (
                   <button
                     key={tab.id}
                     onClick={() => handleTabSwitch(tab.id)}
-                    className={`px-6 py-3 font-medium text-sm border-b-2 transition-all duration-200 ${
+                    className={`px-6 py-4 font-medium text-sm border-b-2 transition-all duration-200 relative ${
                       activeTab === tab.id 
-                        ? 'text-[#2B4C8C] border-[#4ECDC4] bg-white' 
-                        : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50'
+                        ? 'text-[#2B4C8C] border-[#4ECDC4] bg-white shadow-sm' 
+                        : 'text-gray-600 border-transparent hover:text-gray-800 hover:bg-gray-50/50 hover:border-gray-200'
                     }`}
                   >
                     {tab.label}
+                    {activeTab === tab.id && (
+                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#4ECDC4] to-[#2B4C8C]"></div>
+                    )}
                   </button>
                 ))}
               </div>
 
-              {/* Tab Content */}
-              <div className="flex-1 p-4 overflow-y-auto min-h-0">
+              {/* Enhanced Tab Content */}
+              <div className="flex-1 p-6 overflow-y-auto min-h-0 bg-gradient-to-br from-white to-gray-50/30">
                 {activeTab === 'notes' && (
-                  <div className="h-full flex flex-col">
-                    <div className="flex-1 mb-4">
+                  <div className="h-full flex flex-col space-y-4">
+                    {/* Enhanced Notes Header */}
+                    <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                      <h4 className="text-lg font-semibold text-gray-900 mb-2">Session Notes</h4>
+                      <p className="text-sm text-gray-600">Document key observations, feedback, and agent responses during this coaching session.</p>
+                    </div>
+
+                    {/* Enhanced Text Area */}
+                    <div className="flex-1 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
                       <textarea
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
-                        className="w-full h-full min-h-[200px] p-4 border border-gray-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono"
-                        placeholder="Enter your coaching notes here. Be specific about behaviors observed, feedback provided, and agent responses..."
+                        className="w-full h-full min-h-[300px] p-6 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono leading-relaxed"
+                        placeholder="📝 Start typing your coaching notes here...
+
+• What specific behaviors did you observe?
+• What feedback did you provide?
+• How did the agent respond?
+• What are the key takeaways?
+• What actions need to be taken?"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <h5 className="text-sm font-medium text-gray-700 mb-3">Quick Add Notes:</h5>
+
+                    {/* Enhanced Quick Notes */}
+                    <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                      <h5 className="text-sm font-semibold text-gray-800 mb-3">Quick Add Common Notes:</h5>
                       <div className="grid grid-cols-2 gap-2">
                         {[
-                          'Great active listening',
-                          'Needs work on empathy', 
+                          'Excellent active listening',
+                          'Needs improvement on empathy', 
                           'Excellent product knowledge',
                           'Good problem solving'
                         ].map(note => (
@@ -1684,34 +1703,94 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
                 )}
 
                 {activeTab === 'evaluation' && (
-                  <div className="space-y-4">
-                    {[
-                      'Communication Skills',
-                      'Technical Knowledge', 
-                      'Problem Solving',
-                      'Customer Focus',
-                      'Process Compliance'
-                    ].map(criteria => (
-                      <div key={criteria} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                        <div className="flex-1">
-                          <span className="font-medium text-gray-700 text-base">{criteria}</span>
-                          <p className="text-sm text-gray-500 mt-1">Rate this aspect of the agent&apos;s performance</p>
+                  <div className="space-y-6">
+                    {/* Enhanced Evaluation Header */}
+                    <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                      <h4 className="text-lg font-semibold text-gray-900 mb-2">Performance Evaluation</h4>
+                      <p className="text-sm text-gray-600">Rate the agent&apos;s performance across key competency areas (1-5 stars).</p>
+                    </div>
+
+                    {/* Enhanced Evaluation Criteria */}
+                    <div className="space-y-4">
+                      {[
+                        { 
+                          name: 'Communication Skills',
+                          description: 'Clarity, tone, and effectiveness in customer interactions'
+                        },
+                        { 
+                          name: 'Technical Knowledge',
+                          description: 'Understanding of products, systems, and procedures'
+                        },
+                        { 
+                          name: 'Problem Solving',
+                          description: 'Ability to analyze issues and provide effective solutions'
+                        },
+                        { 
+                          name: 'Customer Focus',
+                          description: 'Dedication to meeting customer needs and expectations'
+                        },
+                        { 
+                          name: 'Process Compliance',
+                          description: 'Adherence to company policies and procedures'
+                        }
+                      ].map(criteria => (
+                        <div key={criteria.name} className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow">
+                          <div className="flex justify-between items-center">
+                            <div className="flex-1">
+                              <h5 className="font-semibold text-gray-900 text-base mb-1">{criteria.name}</h5>
+                              <p className="text-sm text-gray-600">{criteria.description}</p>
+                            </div>
+                            <div className="rating-stars ml-6 flex gap-1">
+                              {[1,2,3,4,5].map(rating => (
+                                <button
+                                  key={rating}
+                                  onClick={() => handleRating(criteria.name, rating)}
+                                  className={`w-8 h-8 rounded-full transition-all duration-200 ${
+                                    ratings[criteria.name] >= rating 
+                                      ? 'text-yellow-500 hover:text-yellow-600 transform scale-110' 
+                                      : 'text-gray-300 hover:text-yellow-400'
+                                  }`}
+                                >
+                                  <svg
+                                    fill="currentColor"
+                                    viewBox="0 0 20 20"
+                                    className="w-full h-full"
+                                  >
+                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                  </svg>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          {ratings[criteria.name] && (
+                            <div className="mt-3 pt-3 border-t border-gray-100">
+                              <span className="text-sm font-medium text-indigo-600">
+                                Rating: {ratings[criteria.name]}/5 - {
+                                  ratings[criteria.name] >= 4 ? 'Excellent' :
+                                  ratings[criteria.name] >= 3 ? 'Good' :
+                                  ratings[criteria.name] >= 2 ? 'Needs Improvement' : 'Poor'
+                                }
+                              </span>
+                            </div>
+                          )}
                         </div>
-                        <div className="rating-stars ml-4">
-                          {[1,2,3,4,5].map(rating => (
-                            <svg
-                              key={rating}
-                              onClick={() => handleRating(criteria, rating)}
-                              className={`star ${ratings[criteria] >= rating ? 'filled' : ''}`}
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
-                            >
-                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                            </svg>
-                          ))}
+                      ))}
+                    </div>
+
+                    {/* Overall Rating Summary */}
+                    {Object.keys(ratings).length > 0 && (
+                      <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-lg p-4 shadow-sm">
+                        <h5 className="font-semibold text-gray-900 mb-2">Overall Performance Summary</h5>
+                        <div className="flex items-center gap-4">
+                          <span className="text-2xl font-bold text-indigo-600">
+                            {(Object.values(ratings).reduce((a, b) => a + b, 0) / Object.keys(ratings).length).toFixed(1)}/5
+                          </span>
+                          <span className="text-sm text-gray-700">
+                            Average rating across {Object.keys(ratings).length} criteria
+                          </span>
                         </div>
                       </div>
-                    ))}
+                    )}
                   </div>
                 )}
 
@@ -1769,6 +1848,273 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
                   </div>
                 )}
 
+                {activeTab === 'performance' && selectedAgentId && (
+                  <div className="space-y-6">
+                    {/* Performance Comparison Header */}
+                    <div className="border-b border-gray-200 pb-4">
+                      <h3 className="text-xl font-bold text-gray-900 mb-2">Performance Comparison</h3>
+                      <p className="text-sm text-gray-600">Compare current performance metrics with previous session data</p>
+                    </div>
+
+                    {/* Performance Comparison Table */}
+                    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                      <table className="w-full">
+                        <thead className="bg-gray-50 border-b border-gray-200">
+                          <tr>
+                            <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900 w-1/4">KPI</th>
+                            <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900 w-1/4">Last Session</th>
+                            <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900 w-1/4">Current</th>
+                            <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900 w-1/4">Trend</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {/* Call Stats */}
+                          <tr className="hover:bg-gray-50 transition-colors">
+                            <td className="px-6 py-4 text-sm font-medium text-gray-900">Call Stats</td>
+                            <td className="px-6 py-4 text-center">
+                              <input
+                                type="text"
+                                className="w-24 h-8 px-2 border border-gray-300 rounded text-center text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                placeholder="85%"
+                                defaultValue="82%"
+                              />
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              <input
+                                type="text"
+                                className="w-24 h-8 px-2 border border-gray-300 rounded text-center text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                placeholder="87%"
+                                defaultValue={agentMetrics?.metrics?.CSAT?.value ? `${Math.round(agentMetrics.metrics.CSAT.value * 20)}%` : '87%'}
+                              />
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              <div className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                                </svg>
+                                Improved
+                              </div>
+                            </td>
+                          </tr>
+
+                          {/* Average Talk Time */}
+                          <tr className="hover:bg-gray-50 transition-colors">
+                            <td className="px-6 py-4 text-sm font-medium text-gray-900">Average Talk Time</td>
+                            <td className="px-6 py-4 text-center">
+                              <input
+                                type="text"
+                                className="w-24 h-8 px-2 border border-gray-300 rounded text-center text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                placeholder="6:45"
+                                defaultValue="6:45"
+                              />
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              <input
+                                type="text"
+                                className="w-24 h-8 px-2 border border-gray-300 rounded text-center text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                defaultValue={(() => {
+                                  const aht = agentMetrics?.metrics?.AHT?.value;
+                                  if (aht) {
+                                    const mins = Math.floor(aht / 60);
+                                    const secs = aht % 60;
+                                    return `${mins}:${secs.toString().padStart(2, '0')}`;
+                                  }
+                                  return '5:30';
+                                })()}
+                              />
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              <div className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">
+                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
+                                </svg>
+                                Same
+                              </div>
+                            </td>
+                          </tr>
+
+                          {/* QA Score */}
+                          <tr className="hover:bg-gray-50 transition-colors">
+                            <td className="px-6 py-4 text-sm font-medium text-gray-900">QA Score</td>
+                            <td className="px-6 py-4 text-center">
+                              <input
+                                type="text"
+                                className="w-24 h-8 px-2 border border-gray-300 rounded text-center text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                placeholder="88%"
+                                defaultValue="88%"
+                              />
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              <input
+                                type="text"
+                                className="w-24 h-8 px-2 border border-gray-300 rounded text-center text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                defaultValue={agentMetrics?.metrics?.['Quality Score']?.value ? `${Math.round(agentMetrics.metrics['Quality Score'].value)}%` : '92%'}
+                              />
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              <div className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
+                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                                </svg>
+                                Declined
+                              </div>
+                            </td>
+                          </tr>
+
+                          {/* Absenteeism */}
+                          <tr className="hover:bg-gray-50 transition-colors">
+                            <td className="px-6 py-4 text-sm font-medium text-gray-900">Absenteeism</td>
+                            <td className="px-6 py-4 text-center">
+                              <input
+                                type="text"
+                                className="w-24 h-8 px-2 border border-gray-300 rounded text-center text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                placeholder="2%"
+                                defaultValue="3%"
+                              />
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              <input
+                                type="text"
+                                className="w-24 h-8 px-2 border border-gray-300 rounded text-center text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                placeholder="1%"
+                                defaultValue="1%"
+                              />
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              <select className="px-3 py-1 border border-gray-300 rounded text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white">
+                                <option value="improved" className="text-green-700">✓ Improved</option>
+                                <option value="same" className="text-gray-600">— Same</option>
+                                <option value="declined" className="text-red-700">↓ Declined</option>
+                              </select>
+                            </td>
+                          </tr>
+
+                          {/* Lateness */}
+                          <tr className="hover:bg-gray-50 transition-colors">
+                            <td className="px-6 py-4 text-sm font-medium text-gray-900">Lateness</td>
+                            <td className="px-6 py-4 text-center">
+                              <input
+                                type="text"
+                                className="w-24 h-8 px-2 border border-gray-300 rounded text-center text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                placeholder="4 times"
+                                defaultValue="4 times"
+                              />
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              <input
+                                type="text"
+                                className="w-24 h-8 px-2 border border-gray-300 rounded text-center text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                placeholder="1 time"
+                                defaultValue="1 time"
+                              />
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              <select className="px-3 py-1 border border-gray-300 rounded text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white" defaultValue="improved">
+                                <option value="improved" className="text-green-700">✓ Improved</option>
+                                <option value="same" className="text-gray-600">— Same</option>
+                                <option value="declined" className="text-red-700">↓ Declined</option>
+                              </select>
+                            </td>
+                          </tr>
+
+                          {/* Break Exceeds */}
+                          <tr className="hover:bg-gray-50 transition-colors">
+                            <td className="px-6 py-4 text-sm font-medium text-gray-900">Break Exceeds</td>
+                            <td className="px-6 py-4 text-center">
+                              <input
+                                type="text"
+                                className="w-24 h-8 px-2 border border-gray-300 rounded text-center text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                placeholder="6 times"
+                                defaultValue="6 times"
+                              />
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              <input
+                                type="text"
+                                className="w-24 h-8 px-2 border border-gray-300 rounded text-center text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                placeholder="2 times"
+                                defaultValue="2 times"
+                              />
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              <select className="px-3 py-1 border border-gray-300 rounded text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white" defaultValue="improved">
+                                <option value="improved" className="text-green-700">✓ Improved</option>
+                                <option value="same" className="text-gray-600">— Same</option>
+                                <option value="declined" className="text-red-700">↓ Declined</option>
+                              </select>
+                            </td>
+                          </tr>
+
+                          {/* Sales Performance */}
+                          <tr className="hover:bg-gray-50 transition-colors">
+                            <td className="px-6 py-4 text-sm font-medium text-gray-900">Sales Performance</td>
+                            <td className="px-6 py-4 text-center">
+                              <input
+                                type="text"
+                                className="w-24 h-8 px-2 border border-gray-300 rounded text-center text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                placeholder="78%"
+                                defaultValue="78%"
+                              />
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              <input
+                                type="text"
+                                className="w-24 h-8 px-2 border border-gray-300 rounded text-center text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                defaultValue={agentMetrics?.metrics?.FCR?.value ? `${Math.round(agentMetrics.metrics.FCR.value)}%` : '87%'}
+                              />
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              <select className="px-3 py-1 border border-gray-300 rounded text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white" defaultValue="improved">
+                                <option value="improved" className="text-green-700">✓ Improved</option>
+                                <option value="same" className="text-gray-600">— Same</option>
+                                <option value="declined" className="text-red-700">↓ Declined</option>
+                              </select>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Performance Summary */}
+                    <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-lg p-6">
+                      <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 bg-indigo-600 rounded-lg flex items-center justify-center">
+                          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                          </svg>
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="text-lg font-semibold text-gray-900 mb-2">Performance Summary</h4>
+                          <p className="text-sm text-gray-700 mb-3">
+                            Overall performance shows improvement in most areas. Focus areas for next session include 
+                            maintaining QA standards while continuing to improve attendance and punctuality.
+                          </p>
+                          <div className="flex items-center gap-4 text-sm">
+                            <span className="inline-flex items-center gap-1 text-green-600 font-medium">
+                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                              </svg>
+                              5 Areas Improved
+                            </span>
+                            <span className="inline-flex items-center gap-1 text-gray-600 font-medium">
+                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
+                              </svg>
+                              1 Area Stable
+                            </span>
+                            <span className="inline-flex items-center gap-1 text-red-600 font-medium">
+                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                              </svg>
+                              1 Area Needs Focus
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {activeTab === 'templates' && (
                   <div className="grid grid-cols-2 gap-4">
                     {[
@@ -1790,17 +2136,17 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
                 )}
               </div>
 
-              {/* Action Bar */}
-              <div className="border-t border-gray-200 px-6 py-4 flex justify-between items-center bg-gray-50">
+              {/* Enhanced Action Bar */}
+              <div className="border-t border-gray-200 px-6 py-4 flex justify-between items-center bg-gradient-to-r from-gray-50 to-white">
                 <div className="flex items-center gap-4">
-                  <span className="text-sm text-gray-600">Agent Response:</span>
-                  <div className="flex gap-2">
+                  <span className="text-sm font-medium text-gray-700">Agent Feedback:</span>
+                  <div className="flex gap-3">
                     <button
                       onClick={() => handleAgentResponse('agree')}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+                      className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
                         agentResponse === 'agree' 
-                          ? 'bg-green-100 text-green-700 border-2 border-green-300' 
-                          : 'bg-white text-green-600 border border-green-300 hover:bg-green-50'
+                          ? 'bg-green-100 text-green-700 border-2 border-green-300 shadow-sm' 
+                          : 'bg-white text-green-600 border border-green-300 hover:bg-green-50 hover:border-green-400 shadow-sm'
                       }`}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1810,10 +2156,10 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
                     </button>
                     <button
                       onClick={() => handleAgentResponse('disagree')}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+                      className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
                         agentResponse === 'disagree' 
-                          ? 'bg-red-100 text-red-700 border-2 border-red-300' 
-                          : 'bg-white text-red-600 border border-red-300 hover:bg-red-50'
+                          ? 'bg-red-100 text-red-700 border-2 border-red-300 shadow-sm' 
+                          : 'bg-white text-red-600 border border-red-300 hover:bg-red-50 hover:border-red-400 shadow-sm'
                       }`}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1825,18 +2171,25 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
                 </div>
                 <div className="flex gap-3">
                   <button 
-                    onClick={saveSessionNotes}
-                    disabled={isSaving}
-                    className="px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-700 transition-colors text-sm font-medium disabled:opacity-50"
-                  >
-                    {isSaving ? 'Saving...' : 'Save Draft'}
-                  </button>
-                  <button 
                     onClick={completeSession}
                     disabled={isSaving}
-                    className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium disabled:opacity-50"
+                    className="px-8 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-lg hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200 text-sm font-medium disabled:opacity-50 shadow-lg hover:shadow-xl flex items-center gap-2"
                   >
-                    {isSaving ? 'Completing...' : 'Complete Session'}
+                    {isSaving ? (
+                      <>
+                        <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Completing...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        Complete Session
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
