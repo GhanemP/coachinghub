@@ -1,0 +1,402 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum UserRole {
+  AGENT
+  TEAM_LEADER
+  MANAGER
+  ADMIN
+}
+
+enum SessionType {
+  SCHEDULED
+  IMPROMPTU
+  FOLLOW_UP
+  PERFORMANCE_REVIEW
+  GOAL_SETTING
+  INCIDENT_REVIEW
+}
+
+enum SessionStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum AgentResponseType {
+  AGREE
+  DISAGREE
+  PARTIAL_AGREE
+}
+
+enum ActionItemStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  OVERDUE
+  CANCELLED
+}
+
+enum ActionItemPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum GoalStatus {
+  ACTIVE
+  COMPLETED
+  ON_HOLD
+  CANCELLED
+}
+
+enum TrendDirection {
+  IMPROVING
+  STABLE
+  DECLINING
+}
+
+// Models
+model User {
+  id                String      @id @default(cuid())
+  email             String      @unique
+  firstName         String
+  lastName          String
+  role              UserRole
+  avatar            String?
+  department        String?
+  tenure            DateTime?   // Date when they joined
+  isActive          Boolean     @default(true)
+  
+  // Relations
+  teamMemberships   TeamMember[]
+  ledSessions       CoachingSession[] @relation("TeamLeader")
+  receivedSessions  CoachingSession[] @relation("Agent")
+  createdGoals      Goal[]       @relation("CreatedBy")
+  assignedGoals     Goal[]       @relation("AssignedTo")
+  createdActions    ActionItem[] @relation("CreatedBy")
+  assignedActions   ActionItem[] @relation("AssignedTo")
+  templates         Template[]
+  
+  // NextAuth.js Relations
+  accounts          Account[]
+  sessions          Session[]
+  
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  
+  @@index([email])
+  @@index([role])
+}
+
+model Team {
+  id          String      @id @default(cuid())
+  name        String
+  description String?
+  isActive    Boolean     @default(true)
+  
+  // Relations
+  members     TeamMember[]
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  @@index([name])
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  userId    String
+  teamId    String
+  role      String?  // Role within the team
+  joinedAt  DateTime @default(now())
+  leftAt    DateTime?
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id])
+  team      Team     @relation(fields: [teamId], references: [id])
+  
+  @@unique([userId, teamId])
+  @@index([userId])
+  @@index([teamId])
+}
+
+model CoachingSession {
+  id              String          @id @default(cuid())
+  sessionNumber   Int
+  type            SessionType
+  status          SessionStatus   @default(DRAFT)
+  scheduledDate   DateTime
+  actualDate      DateTime?
+  duration        Int?            // Duration in minutes
+  
+  // Participants
+  teamLeaderId    String
+  agentId         String
+  
+  // Session details
+  callsReviewed   Int?
+  callTypes       String[]        // Array of call types reviewed
+  overallScore    Float?          // Calculated overall score
+  
+  // Relations
+  teamLeader      User            @relation("TeamLeader", fields: [teamLeaderId], references: [id])
+  agent           User            @relation("Agent", fields: [agentId], references: [id])
+  notes           SessionNote[]
+  evaluations     Evaluation[]
+  actionItems     ActionItem[]
+  goals           Goal[]
+  agentResponse   AgentResponse?
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  @@index([teamLeaderId])
+  @@index([agentId])
+  @@index([scheduledDate])
+  @@index([status])
+}
+
+model SessionNote {
+  id            String          @id @default(cuid())
+  sessionId     String
+  content       String          @db.Text
+  timestamp     DateTime        @default(now())
+  isQuickNote   Boolean         @default(false)
+  category      String?         // 'strength', 'improvement', 'observation'
+  
+  // Relations
+  session       CoachingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime        @default(now())
+  
+  @@index([sessionId])
+}
+
+model EvaluationCriteria {
+  id            String      @id @default(cuid())
+  name          String      @unique
+  category      String      // 'communication', 'technical', 'customer_service', 'process'
+  weight        Float       // Weight percentage for scoring
+  description   String?
+  isActive      Boolean     @default(true)
+  
+  // Relations
+  evaluations   Evaluation[]
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
+  @@index([category])
+}
+
+model Evaluation {
+  id            String              @id @default(cuid())
+  sessionId     String
+  criteriaId    String
+  score         Int                 // 1-5 rating
+  trend         TrendDirection      @default(STABLE)
+  notes         String?
+  
+  // Relations
+  session       CoachingSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  criteria      EvaluationCriteria  @relation(fields: [criteriaId], references: [id])
+  
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  
+  @@unique([sessionId, criteriaId])
+  @@index([sessionId])
+  @@index([criteriaId])
+}
+
+model ActionItem {
+  id            String              @id @default(cuid())
+  title         String
+  description   String?
+  status        ActionItemStatus    @default(PENDING)
+  priority      ActionItemPriority  @default(MEDIUM)
+  dueDate       DateTime?
+  completedDate DateTime?
+  
+  // Relations
+  sessionId     String?
+  createdById   String
+  assignedToId  String
+  
+  session       CoachingSession?    @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  createdBy     User               @relation("CreatedBy", fields: [createdById], references: [id])
+  assignedTo    User               @relation("AssignedTo", fields: [assignedToId], references: [id])
+  
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  
+  @@index([sessionId])
+  @@index([assignedToId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+model Goal {
+  id            String      @id @default(cuid())
+  title         String
+  description   String      @db.Text
+  category      String      // 'communication', 'technical', 'metrics', etc.
+  targetValue   String?     // Measurable target
+  currentValue  String?     // Current progress
+  status        GoalStatus  @default(ACTIVE)
+  startDate     DateTime    @default(now())
+  targetDate    DateTime
+  completedDate DateTime?
+  
+  // Relations
+  sessionId     String?
+  createdById   String
+  assignedToId  String
+  
+  session       CoachingSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  createdBy     User            @relation("CreatedBy", fields: [createdById], references: [id])
+  assignedTo    User            @relation("AssignedTo", fields: [assignedToId], references: [id])
+  
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  
+  @@index([assignedToId])
+  @@index([status])
+  @@index([category])
+}
+
+model AgentResponse {
+  id            String              @id @default(cuid())
+  sessionId     String              @unique
+  responseType  AgentResponseType
+  comments      String?             @db.Text
+  agreedPoints  String[]            // Specific points agent agreed with
+  disputedPoints String[]           // Specific points agent disagreed with
+  
+  // Relations
+  session       CoachingSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+}
+
+model KPIMetric {
+  id            String      @id @default(cuid())
+  userId        String
+  metricName    String      // 'CSAT', 'AHT', 'FCR', 'Quality Score'
+  value         Float
+  unit          String?     // 'percentage', 'minutes', 'score'
+  period        DateTime    // Month/week this metric applies to
+  
+  createdAt     DateTime    @default(now())
+  
+  @@unique([userId, metricName, period])
+  @@index([userId])
+  @@index([period])
+}
+
+model Template {
+  id            String      @id @default(cuid())
+  name          String
+  type          SessionType
+  description   String?
+  content       Json        // JSON structure with criteria, default values, etc.
+  isActive      Boolean     @default(true)
+  
+  // Relations
+  createdById   String
+  createdBy     User        @relation(fields: [createdById], references: [id])
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
+  @@index([type])
+  @@index([createdById])
+}
+
+// Audit log for tracking changes
+model AuditLog {
+  id            String      @id @default(cuid())
+  userId        String
+  action        String      // 'create', 'update', 'delete'
+  entityType    String      // 'session', 'actionItem', 'goal', etc.
+  entityId      String
+  changes       Json?       // JSON of what changed
+  ipAddress     String?
+  userAgent     String?
+  
+  createdAt     DateTime    @default(now())
+  
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+// Email whitelist for access control
+model WhitelistedEmail {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  domain      String?  // Optional domain for wildcard matching (e.g., "company.com")
+  isActive    Boolean  @default(true)
+  addedById   String?  // Admin who added this email
+  notes       String?  // Optional notes about why this email was whitelisted
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([email])
+  @@index([domain])
+}
+
+// NextAuth.js Required Models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
