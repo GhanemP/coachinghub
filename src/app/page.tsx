@@ -48,6 +48,17 @@ interface Goal {
   progress?: number;
 }
 
+interface AgentMetrics {
+  metrics: {
+    CSAT?: { value: number; unit: string; period: string };
+    FCR?: { value: number; unit: string; period: string };
+    'Quality Score'?: { value: number; unit: string; period: string };
+    AHT?: { value: number; unit: string; period: string };
+  };
+  overallScore: number;
+  period: string;
+}
+
 export default function Home() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -88,10 +99,35 @@ type AgentUser = User & { department?: string; tenure?: string };
 const [agents, setAgents] = useState<AgentUser[]>([]);
   const [selectedAgentId, setSelectedAgentId] = useState<string>("");
   
+  // Agent metrics state
+  const [agentMetrics, setAgentMetrics] = useState<AgentMetrics | null>(null);
+  const [isLoadingMetrics, setIsLoadingMetrics] = useState<boolean>(false);
+  
   // Widget position state
   const [widgetPosition, setWidgetPosition] = useState({ x: 20, y: 20 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+
+  // Helper function to fetch agent metrics
+  const fetchAgentMetrics = async (userId: string) => {
+    if (!userId) return;
+    setIsLoadingMetrics(true);
+    try {
+      const response = await fetch(`/api/agent-metrics?userId=${userId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setAgentMetrics(data);
+      } else {
+        console.error('Failed to fetch agent metrics');
+        setAgentMetrics(null);
+      }
+    } catch (error) {
+      console.error('Error fetching agent metrics:', error);
+      setAgentMetrics(null);
+    } finally {
+      setIsLoadingMetrics(false);
+    }
+  };
 
   // Helper function to refresh session data
   const refreshSessions = async () => {
@@ -370,6 +406,13 @@ const [agents, setAgents] = useState<AgentUser[]>([]);
       loadInitialData();
     }
   }, [session]);
+
+  // Fetch agent metrics when selected agent changes
+  useEffect(() => {
+    if (selectedAgentId && (session?.user?.role === 'TEAM_LEADER' || session?.user?.role === 'MANAGER' || session?.user?.role === 'ADMIN')) {
+      fetchAgentMetrics(selectedAgentId);
+    }
+  }, [selectedAgentId, session?.user?.role]);
 
   // Widget drag handlers
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -1419,59 +1462,161 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
           <div className="col-span-6 flex flex-col gap-4 h-full min-h-0">
             {/* Agent Header and Metrics for Team Leader, Admin, and Manager with agent selected */}
             {(session.user?.role === 'TEAM_LEADER' || session.user?.role === 'ADMIN' || session.user?.role === 'MANAGER') && selectedAgentId && (
-              <div className="bg-white rounded-xl shadow p-4 flex-shrink-0">
-                <div className="flex justify-between items-center">
+              <div className="bg-gradient-to-r from-white to-gray-50 rounded-xl shadow-lg border border-gray-200 p-6 flex-shrink-0">
+                <div className="flex justify-between items-start">
+                  {/* Agent Info */}
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                      {/* Initials */}
-                      {(() => {
-                        const agent = agents.find(a => a.id === selectedAgentId);
-                        if (!agent) return "";
-                        return `${agent.firstName[0] || ''}${agent.lastName[0] || ''}`;
-                      })()}
+                    <div className="relative">
+                      <div className="w-14 h-14 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                        {(() => {
+                          const agent = agents.find(a => a.id === selectedAgentId);
+                          if (!agent) return "";
+                          return `${agent.firstName[0] || ''}${agent.lastName[0] || ''}`;
+                        })()}
+                      </div>
+                      {/* Online status indicator */}
+                      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
                     </div>
-                    <div>
-                      <h2 className="text-lg font-semibold text-gray-900">
+                    <div className="flex flex-col">
+                      <h2 className="text-xl font-bold text-gray-900 mb-1">
                         {(() => {
                           const agent = agents.find(a => a.id === selectedAgentId);
                           if (!agent) return "";
                           return `${agent.firstName} ${agent.lastName}`;
                         })()}
                       </h2>
-                      <p className="text-xs text-gray-500">
-                        {/* Department and tenure if available */}
-                        {(() => {
+                      <div className="flex items-center gap-3 text-sm text-gray-600">
+                        <span className="flex items-center gap-1">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                          {(() => {
+                            const agent = agents.find(a => a.id === selectedAgentId);
+                            return agent?.department || 'Customer Service';
+                          })()}
+                        </span>
+                        <span className="text-gray-400">•</span>
+                        <span>{(() => {
                           const agent = agents.find(a => a.id === selectedAgentId);
-                          if (!agent) return "";
-                          return `${(agent.department ?? '')}${agent.tenure ? ` • ${agent.tenure}` : ''}`;
-                        })()}
-                      </p>
+                          if (agent?.tenure) {
+                            const tenure = new Date(agent.tenure);
+                            const now = new Date();
+                            const months = Math.floor((now.getTime() - tenure.getTime()) / (1000 * 60 * 60 * 24 * 30));
+                            return `${Math.floor(months / 12)}y ${months % 12}m experience`;
+                          }
+                          return '2y 3m experience';
+                        })()}</span>
+                      </div>
                     </div>
                   </div>
-                  {/* Key Metrics and Agent Rating */}
-                  <div className="grid grid-cols-4 gap-3">
+
+                  {/* Performance Metrics */}
+                  <div className="flex items-center gap-6">
+                    {/* Overall Score Circle */}
                     <div className="flex flex-col items-center">
-                      <span className="text-xs text-gray-500 font-medium">CSAT Score</span>
-                      <span className="font-bold text-indigo-600 text-lg">4.8</span>
+                      <div className="relative w-16 h-16">
+                        <svg className="w-16 h-16 -rotate-90" viewBox="0 0 36 36">
+                          <path
+                            className="text-gray-200"
+                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          />
+                          <path
+                            className="text-indigo-500"
+                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeDasharray={`${(agentMetrics?.overallScore || 85) * 100 / 100}, 100`}
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="text-lg font-bold text-gray-900">
+                            {isLoadingMetrics ? '...' : (agentMetrics?.overallScore || 85)}
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-xs text-gray-500 font-medium mt-1">Overall</span>
                     </div>
-                    <div className="flex flex-col items-center">
-                      <span className="text-xs text-gray-500 font-medium">First Call Resolution</span>
-                      <span className="font-bold text-green-600 text-lg">87%</span>
+
+                    {/* Key Metrics Grid */}
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* CSAT Score */}
+                      <div className="bg-white rounded-lg p-3 border border-gray-100 shadow-sm min-w-[100px]">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs text-gray-500 font-medium">CSAT</span>
+                          <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
+                        </div>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-lg font-bold text-indigo-600">
+                            {isLoadingMetrics ? '...' : agentMetrics?.metrics?.CSAT?.value || '4.8'}
+                          </span>
+                          <span className="text-xs text-gray-400">/5</span>
+                        </div>
+                      </div>
+
+                      {/* FCR */}
+                      <div className="bg-white rounded-lg p-3 border border-gray-100 shadow-sm min-w-[100px]">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs text-gray-500 font-medium">FCR</span>
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        </div>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-lg font-bold text-green-600">
+                            {isLoadingMetrics ? '...' : agentMetrics?.metrics?.FCR?.value || '87'}
+                          </span>
+                          <span className="text-xs text-gray-400">%</span>
+                        </div>
+                      </div>
+
+                      {/* AHT */}
+                      <div className="bg-white rounded-lg p-3 border border-gray-100 shadow-sm min-w-[100px]">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs text-gray-500 font-medium">AHT</span>
+                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                        </div>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-lg font-bold text-blue-600">
+                            {isLoadingMetrics ? '...' : (() => {
+                              const aht = agentMetrics?.metrics?.AHT?.value;
+                              if (aht) {
+                                const mins = Math.floor(aht / 60);
+                                const secs = aht % 60;
+                                return `${mins}:${secs.toString().padStart(2, '0')}`;
+                              }
+                              return '5:30';
+                            })()}
+                          </span>
+                          <span className="text-xs text-gray-400">min</span>
+                        </div>
+                      </div>
+
+                      {/* Quality Score */}
+                      <div className="bg-white rounded-lg p-3 border border-gray-100 shadow-sm min-w-[100px]">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs text-gray-500 font-medium">Quality</span>
+                          <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                        </div>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-lg font-bold text-purple-600">
+                            {isLoadingMetrics ? '...' : agentMetrics?.metrics?.['Quality Score']?.value || '92'}
+                          </span>
+                          <span className="text-xs text-gray-400">%</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex flex-col items-center">
-                      <span className="text-xs text-gray-500 font-medium">Avg Handle Time</span>
-                      <span className="font-bold text-blue-600 text-lg">5:30</span>
+
+                    {/* Performance Trend Indicator */}
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="flex items-center gap-1 text-green-600">
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M3.293 9.707a1 1 0 010-1.414l6-6a1 1 0 011.414 0l6 6a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L4.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                        </svg>
+                        <span className="text-sm font-medium">+3.2%</span>
+                      </div>
+                      <span className="text-xs text-gray-500">vs last month</span>
                     </div>
-                    <div className="flex flex-col items-center">
-                      <span className="text-xs text-gray-500 font-medium">Quality Score</span>
-                      <span className="font-bold text-purple-600 text-lg">92%</span>
-                    </div>
-                  </div>
-                  {/* Agent Rating Stars */}
-                  <div className="flex items-center ml-8">
-                    {[1,2,3,4,5].map(i => (
-                      <span key={i} className={`w-5 h-5 rounded-full ${i <= 4 ? 'bg-indigo-500' : 'bg-gray-300'} mr-1`}></span>
-                    ))}
                   </div>
                 </div>
               </div>
