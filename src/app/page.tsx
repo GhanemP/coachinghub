@@ -35,6 +35,8 @@ interface ActionItem {
   sessionId?: string;
   assignedTo?: User;
   createdBy?: User;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface Goal {
@@ -70,8 +72,16 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [showActionItemForm, setShowActionItemForm] = useState<boolean>(false);
-  const [newActionItem, setNewActionItem] = useState({ title: '', description: '' });
+  const [newActionItem, setNewActionItem] = useState({ 
+    title: '', 
+    description: '', 
+    priority: 'MEDIUM' as 'LOW' | 'MEDIUM' | 'HIGH',
+    dueDate: '',
+    assignedToId: ''
+  });
   const [selectedPreviousSession, setSelectedPreviousSession] = useState<Session | null>(null);
+  const [actionItemFilter, setActionItemFilter] = useState<'ALL' | 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'OVERDUE'>('ALL');
+  const [sortActionItemsBy, setSortActionItemsBy] = useState<'dueDate' | 'priority' | 'status' | 'created'>('dueDate');
   const [showSessionModal, setShowSessionModal] = useState<boolean>(false);
   const [isCreatingSession, setIsCreatingSession] = useState<boolean>(false);
 type AgentUser = User & { department?: string; tenure?: string };
@@ -112,6 +122,63 @@ const [agents, setAgents] = useState<AgentUser[]>([]);
       return Math.min(100, Math.round((current / target) * 100));
     }
     return 0;
+  };
+
+  // Helper function to filter and sort action items
+  const getFilteredAndSortedActionItems = () => {
+    let filtered = actionItems;
+
+    // Apply filters
+    if (actionItemFilter !== 'ALL') {
+      if (actionItemFilter === 'OVERDUE') {
+        filtered = actionItems.filter(item => {
+          if (!item.dueDate || item.status === 'COMPLETED') return false;
+          return new Date(item.dueDate) < new Date();
+        });
+      } else {
+        filtered = actionItems.filter(item => item.status === actionItemFilter);
+      }
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      switch (sortActionItemsBy) {
+        case 'dueDate':
+          if (!a.dueDate && !b.dueDate) return 0;
+          if (!a.dueDate) return 1;
+          if (!b.dueDate) return -1;
+          return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+        case 'priority':
+          const priorityOrder = { 'HIGH': 0, 'MEDIUM': 1, 'LOW': 2 };
+          return priorityOrder[a.priority as keyof typeof priorityOrder] - priorityOrder[b.priority as keyof typeof priorityOrder];
+        case 'status':
+          const statusOrder = { 'OVERDUE': 0, 'IN_PROGRESS': 1, 'PENDING': 2, 'COMPLETED': 3 };
+          const aStatus = (a.dueDate && new Date(a.dueDate) < new Date() && a.status !== 'COMPLETED') ? 'OVERDUE' : a.status;
+          const bStatus = (b.dueDate && new Date(b.dueDate) < new Date() && b.status !== 'COMPLETED') ? 'OVERDUE' : b.status;
+          return statusOrder[aStatus as keyof typeof statusOrder] - statusOrder[bStatus as keyof typeof statusOrder];
+        case 'created':
+        default:
+          return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+      }
+    });
+
+    return filtered;
+  };
+
+  // Helper function to get action item status including overdue
+  const getActionItemStatus = (item: ActionItem) => {
+    if (item.status === 'COMPLETED') return 'COMPLETED';
+    if (item.dueDate && new Date(item.dueDate) < new Date()) return 'OVERDUE';
+    return item.status;
+  };
+
+  // Helper function to get days until due date
+  const getDaysUntilDue = (dueDate: string) => {
+    const due = new Date(dueDate);
+    const today = new Date();
+    const diffTime = due.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
   };
 
   // Redirect to login if not authenticated
@@ -608,7 +675,7 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
     }
   };
 
-  const createActionItem = async (title: string, description: string = '') => {
+  const createActionItem = async (title: string, description: string = '', priority: string = 'MEDIUM', dueDate: string = '', assignedToId: string = '') => {
     try {
       // Get users for default assignment
       const usersResponse = await fetch('/api/user');
@@ -617,9 +684,30 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
       const teamLeader = users.find((user: User) => user.role === 'TEAM_LEADER');
       const agent = users.find((user: User) => user.role === 'AGENT');
       
-      if (!teamLeader || !agent) {
-        alert('Error: Required users not found. Please contact admin.');
+      if (!teamLeader) {
+        alert('Error: Team leader not found. Please contact admin.');
         return;
+      }
+
+      // Use provided assignedToId or default to agent or selected agent
+      let finalAssignedToId = assignedToId;
+      if (!finalAssignedToId) {
+        if (selectedAgentId) {
+          finalAssignedToId = selectedAgentId;
+        } else if (agent) {
+          finalAssignedToId = agent.id;
+        } else {
+          alert('Error: No agent available for assignment. Please contact admin.');
+          return;
+        }
+      }
+
+      // Calculate due date if not provided
+      let finalDueDate = dueDate;
+      if (!finalDueDate) {
+        const defaultDue = new Date();
+        defaultDue.setDate(defaultDue.getDate() + 7); // 7 days from now
+        finalDueDate = defaultDue.toISOString();
       }
 
       const response = await fetch('/api/action-item', {
@@ -630,10 +718,10 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
           description,
           sessionId: currentSession?.id || null, // Can be null for general action items
           createdById: teamLeader.id,
-          assignedToId: agent.id,
-          priority: 'MEDIUM',
+          assignedToId: finalAssignedToId,
+          priority: priority,
           status: 'PENDING',
-          dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days from now
+          dueDate: finalDueDate
         })
       });
       
@@ -661,8 +749,14 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
       return;
     }
     
-    await createActionItem(newActionItem.title, newActionItem.description);
-    setNewActionItem({ title: '', description: '' });
+    await createActionItem(
+      newActionItem.title, 
+      newActionItem.description, 
+      newActionItem.priority, 
+      newActionItem.dueDate, 
+      newActionItem.assignedToId
+    );
+    setNewActionItem({ title: '', description: '', priority: 'MEDIUM', dueDate: '', assignedToId: '' });
     setShowActionItemForm(false);
   };
 
@@ -1611,143 +1705,363 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
             </div>
           </div>
 
-          {/* Action Items Column */}
+          {/* Enhanced Action Items Column */}
           <div className="col-span-3 bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col h-full border border-[#00C4B3]/20">
-            <div className="px-5 py-4 border-b border-gray-200 flex justify-between items-center flex-shrink-0">
-              <h3 className="text-base font-semibold text-gray-800 flex items-center gap-2">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 012 2h2a2 2 0 012-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                </svg>
-                Action Items
-              </h3>
-              <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs font-medium">5</span>
+            {/* Header with filters and controls */}
+            <div className="px-5 py-4 border-b border-gray-200 flex-shrink-0">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-base font-semibold text-gray-800 flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 012 2h2a2 2 0 012-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                  </svg>
+                  Action Items
+                </h3>
+                <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs font-medium">
+                  {actionItems.length}
+                </span>
+              </div>
+              
+              {/* Status Overview */}
+              <div className="grid grid-cols-4 gap-2 mb-3">
+                <div className="text-center bg-yellow-50 rounded-lg p-2 border border-yellow-200">
+                  <div className="text-lg font-bold text-yellow-600">
+                    {actionItems.filter(item => item.status === 'PENDING').length}
+                  </div>
+                  <div className="text-xs font-medium text-yellow-700">Pending</div>
+                </div>
+                <div className="text-center bg-blue-50 rounded-lg p-2 border border-blue-200">
+                  <div className="text-lg font-bold text-blue-600">
+                    {actionItems.filter(item => item.status === 'IN_PROGRESS').length}
+                  </div>
+                  <div className="text-xs font-medium text-blue-700">Active</div>
+                </div>
+                <div className="text-center bg-red-50 rounded-lg p-2 border border-red-200">
+                  <div className="text-lg font-bold text-red-600">
+                    {actionItems.filter(item => {
+                      if (!item.dueDate || item.status === 'COMPLETED') return false;
+                      return new Date(item.dueDate) < new Date();
+                    }).length}
+                  </div>
+                  <div className="text-xs font-medium text-red-700">Overdue</div>
+                </div>
+                <div className="text-center bg-green-50 rounded-lg p-2 border border-green-200">
+                  <div className="text-lg font-bold text-green-600">
+                    {actionItems.filter(item => item.status === 'COMPLETED').length}
+                  </div>
+                  <div className="text-xs font-medium text-green-700">Done</div>
+                </div>
+              </div>
+
+              {/* Filters and Sort */}
+              <div className="flex gap-2">
+                <select
+                  value={actionItemFilter}
+                  onChange={(e) => setActionItemFilter(e.target.value as 'ALL' | 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'OVERDUE')}
+                  className="flex-1 text-xs border border-gray-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[#00C4B3] focus:border-transparent"
+                  title="Filter action items"
+                >
+                  <option value="ALL">All Items</option>
+                  <option value="PENDING">Pending</option>
+                  <option value="IN_PROGRESS">In Progress</option>
+                  <option value="OVERDUE">Overdue</option>
+                  <option value="COMPLETED">Completed</option>
+                </select>
+                <select
+                  value={sortActionItemsBy}
+                  onChange={(e) => setSortActionItemsBy(e.target.value as 'dueDate' | 'priority' | 'status' | 'created')}
+                  className="flex-1 text-xs border border-gray-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[#00C4B3] focus:border-transparent"
+                  title="Sort action items"
+                >
+                  <option value="dueDate">By Due Date</option>
+                  <option value="priority">By Priority</option>
+                  <option value="status">By Status</option>
+                  <option value="created">By Created</option>
+                </select>
+              </div>
             </div>
+
+            {/* Action Items List */}
             <div className="flex-1 overflow-y-auto p-4">
-              {actionItems.slice(0, 5).map((item: ActionItem) => (
-                <div key={item.id} className="mb-4 bg-white border border-[#00C4B3]/10 rounded-xl p-5 shadow-lg hover:shadow-2xl transition-all">
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-semibold text-sm text-gray-800">{item.title}</h4>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      item.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
-                      item.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800' :
-                      item.status === 'OVERDUE' ? 'bg-red-100 text-red-800' :
-                      'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {item.status === 'PENDING' ? 'Due Soon' : 
-                       item.status === 'COMPLETED' ? 'Completed' :
-                       item.status === 'IN_PROGRESS' ? 'In Progress' :
-                       item.status === 'OVERDUE' ? 'Overdue' : 'Pending'}
-                    </span>
+              {getFilteredAndSortedActionItems().map((item: ActionItem) => {
+                const status = getActionItemStatus(item);
+                const daysUntilDue = item.dueDate ? getDaysUntilDue(item.dueDate) : null;
+                
+                return (
+                  <div key={item.id} className="mb-3 bg-gradient-to-br from-white via-gray-50 to-blue-50 border rounded-xl p-4 shadow-md hover:shadow-lg transition-all">
+                    {/* Header */}
+                    <div className="flex justify-between items-start mb-2">
+                      <h4 className="font-semibold text-sm text-gray-800 flex-1 mr-2">{item.title}</h4>
+                      <div className="flex items-center gap-1">
+                        {/* Priority Indicator */}
+                        <div className={`w-2 h-2 rounded-full ${
+                          item.priority === 'HIGH' ? 'bg-red-500' :
+                          item.priority === 'MEDIUM' ? 'bg-yellow-500' :
+                          'bg-green-500'
+                        }`} title={`${item.priority} Priority`}></div>
+                        
+                        {/* Status Badge */}
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                          status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                          status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800' :
+                          status === 'OVERDUE' ? 'bg-red-100 text-red-800' :
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {status === 'PENDING' ? 'Pending' : 
+                           status === 'COMPLETED' ? 'Done' :
+                           status === 'IN_PROGRESS' ? 'Active' :
+                           status === 'OVERDUE' ? 'Overdue' : status}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Description */}
+                    {item.description && (
+                      <p className="text-sm text-gray-600 mb-3 line-clamp-2">{item.description}</p>
+                    )}
+
+                    {/* Metadata Grid */}
+                    <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
+                      <div className="bg-white/70 rounded-md p-2 border border-gray-200">
+                        <div className="text-gray-500 font-medium mb-1">Due Date</div>
+                        <div className="font-semibold text-gray-800">
+                          {item.dueDate ? (
+                            <span className={daysUntilDue !== null && daysUntilDue < 0 ? 'text-red-600' : daysUntilDue !== null && daysUntilDue <= 2 ? 'text-yellow-600' : 'text-gray-800'}>
+                              {new Date(item.dueDate).toLocaleDateString()}
+                              {daysUntilDue !== null && (
+                                <span className="block text-xs">
+                                  {daysUntilDue < 0 ? `${Math.abs(daysUntilDue)} days overdue` :
+                                   daysUntilDue === 0 ? 'Due today' :
+                                   daysUntilDue === 1 ? 'Due tomorrow' :
+                                   `${daysUntilDue} days left`}
+                                </span>
+                              )}
+                            </span>
+                          ) : 'No due date'}
+                        </div>
+                      </div>
+                      
+                      <div className="bg-white/70 rounded-md p-2 border border-gray-200">
+                        <div className="text-gray-500 font-medium mb-1">Assigned To</div>
+                        <div className="font-semibold text-gray-800">
+                          {item.assignedTo ? `${item.assignedTo.firstName} ${item.assignedTo.lastName}` : 'Unassigned'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Progress Bar for In Progress Items */}
+                    {item.status === 'IN_PROGRESS' && (
+                      <div className="mb-3">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-xs font-medium text-gray-600">Progress</span>
+                          <span className="text-xs font-bold text-blue-600">In Progress</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div className="bg-blue-500 h-2 rounded-full animate-pulse w-3/5"></div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => handleActionItemClick(item)}
+                        className="flex-1 px-2 py-1 text-xs bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200 transition-colors font-medium"
+                        title="Review Details"
+                      >
+                        📝 Review
+                      </button>
+                      
+                      {item.status === 'PENDING' && (
+                        <button
+                          onClick={() => updateActionItemStatus(item.id, 'IN_PROGRESS')}
+                          className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors font-medium"
+                          title="Start Working"
+                        >
+                          🚀 Start
+                        </button>
+                      )}
+                      
+                      {item.status === 'IN_PROGRESS' && (
+                        <button
+                          onClick={() => updateActionItemStatus(item.id, 'COMPLETED')}
+                          className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors font-medium"
+                          title="Mark Complete"
+                        >
+                          ✓ Done
+                        </button>
+                      )}
+                      
+                      {item.status === 'PENDING' && (
+                        <button
+                          onClick={() => updateActionItemStatus(item.id, 'COMPLETED')}
+                          className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors font-medium"
+                          title="Mark Complete"
+                        >
+                          ✓ Complete
+                        </button>
+                      )}
+                      
+                      <button
+                        onClick={() => deleteActionItem(item.id)}
+                        className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors font-medium"
+                        title="Delete Item"
+                      >
+                        🗑️
+                      </button>
+                    </div>
                   </div>
-                  <p className="text-sm text-gray-600 mb-3">{item.description || 'No description'}</p>
-                  <div className="flex gap-4 text-xs text-gray-500 mb-3">
-                    <span>Due: {item.dueDate ? new Date(item.dueDate).toLocaleDateString() : 'No due date'}</span>
-                    <span>{item.priority} Priority</span>
+                );
+              })}
+
+              {/* Empty State with Sample Actions */}
+              {getFilteredAndSortedActionItems().length === 0 && actionItems.length === 0 && !isLoading && (
+                <div className="space-y-3">
+                  <div className="text-center text-gray-500 py-4">
+                    <p className="text-sm">No action items yet</p>
+                    <p className="text-xs text-gray-400">Create action items to track progress</p>
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleActionItemClick(item)}
-                      className="flex-1 px-3 py-1 text-xs bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 transition-colors"
+
+                  {/* Sample Action Items */}
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                    <div className="flex justify-between items-start mb-2">
+                      <h4 className="font-semibold text-sm text-gray-800">Complete empathy training</h4>
+                      <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">High Priority</span>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-3">Enroll in advanced customer empathy course</p>
+                    <div className="flex gap-2 text-xs text-gray-500 mb-3">
+                      <span>Due: {new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString()}</span>
+                      <span>• Assigned to Agent</span>
+                    </div>
+                    <button 
+                      onClick={() => createActionItem('Complete empathy training', 'Enroll in advanced customer empathy course', 'HIGH')}
+                      className="w-full px-3 py-2 text-xs bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200 transition-colors font-medium"
                     >
-                      📝 Review Details
+                      ➕ Create This Action Item
                     </button>
-                    {item.status !== 'COMPLETED' && (
-                      <button
-                        onClick={() => updateActionItemStatus(item.id, 'COMPLETED')}
-                        className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors"
-                      >
-                        ✓ Complete
-                      </button>
-                    )}
-                    {item.status !== 'IN_PROGRESS' && item.status !== 'COMPLETED' && (
-                      <button
-                        onClick={() => updateActionItemStatus(item.id, 'IN_PROGRESS')}
-                        className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
-                      >
-                        🔄 Start
-                      </button>
-                    )}
-                    <button
-                      onClick={() => deleteActionItem(item.id)}
-                      className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
+                  </div>
+
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                    <div className="flex justify-between items-start mb-2">
+                      <h4 className="font-semibold text-sm text-gray-800">Shadow senior agent</h4>
+                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">Medium Priority</span>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-3">2 hours with senior agent on complex calls</p>
+                    <div className="flex gap-2 text-xs text-gray-500 mb-3">
+                      <span>Due: {new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString()}</span>
+                      <span>• Assigned to Agent</span>
+                    </div>
+                    <button 
+                      onClick={() => createActionItem('Shadow senior agent', '2 hours with senior agent on complex calls', 'MEDIUM')}
+                      className="w-full px-3 py-2 text-xs bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200 transition-colors font-medium"
                     >
-                      🗑️ Delete
+                      ➕ Create This Action Item
                     </button>
                   </div>
                 </div>
-              ))}
-
-              {actionItems.length === 0 && !isLoading && (
-                <>
-                  <div className="mb-3 bg-gray-50 border border-gray-200 rounded-lg p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <h4 className="font-semibold text-sm mb-2 text-gray-800">Complete empathy training</h4>
-                      <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">Due Soon</span>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-3">Enroll in advanced customer empathy course</p>
-                    <div className="flex gap-4 text-xs text-gray-500 mb-3">
-                      <span>Due: Jan 20</span>
-                      <span>High Priority</span>
-                    </div>
-                    <button 
-                      onClick={() => createActionItem('Complete empathy training', 'Enroll in advanced customer empathy course')}
-                      className="w-full px-3 py-1 text-xs bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 transition-colors"
-                    >
-                      Create This Action Item
-                    </button>
-                  </div>
-
-                  <div className="mb-3 bg-gray-50 border border-gray-200 rounded-lg p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <h4 className="font-semibold text-sm mb-2 text-gray-800">Shadow senior agent</h4>
-                      <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs font-medium">Pending</span>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-3">2 hours with Alex Thompson on complex calls</p>
-                    <div className="flex gap-4 text-xs text-gray-500 mb-3">
-                      <span>Due: Jan 25</span>
-                      <span>Medium Priority</span>
-                    </div>
-                    <button 
-                      onClick={() => createActionItem('Shadow senior agent', '2 hours with Alex Thompson on complex calls')}
-                      className="w-full px-3 py-1 text-xs bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 transition-colors"
-                    >
-                      Create This Action Item
-                    </button>
-                  </div>
-                </>
               )}
 
-              {/* Add Action Item Form */}
+              {/* No Results for Filter */}
+              {getFilteredAndSortedActionItems().length === 0 && actionItems.length > 0 && (
+                <div className="text-center text-gray-500 py-8">
+                  <p className="text-sm">No action items match the current filter</p>
+                  <button 
+                    onClick={() => setActionItemFilter('ALL')}
+                    className="mt-2 text-xs text-[#00C4B3] hover:underline"
+                  >
+                    Show all items
+                  </button>
+                </div>
+              )}
+
+              {/* Enhanced Add Action Item Form */}
               {showActionItemForm ? (
-                <div className="border-2 border-indigo-300 rounded-lg p-4 mt-2">
-                  <h5 className="font-medium text-gray-700 mb-3">Create New Action Item</h5>
+                <div className="border-2 border-[#00C4B3] rounded-xl p-4 mt-4 bg-gradient-to-br from-[#00C4B3]/5 to-blue-50">
+                  <h5 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Create New Action Item
+                  </h5>
+                  
+                  {/* Title */}
                   <input
                     type="text"
                     placeholder="Action item title..."
                     value={newActionItem.title}
                     onChange={(e) => setNewActionItem(prev => ({ ...prev, title: e.target.value }))}
-                    className="w-full p-2 border border-gray-300 rounded-lg mb-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full p-3 border border-gray-300 rounded-lg mb-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#00C4B3] focus:border-transparent"
                   />
+                  
+                  {/* Description */}
                   <textarea
                     placeholder="Description (optional)..."
                     value={newActionItem.description}
                     onChange={(e) => setNewActionItem(prev => ({ ...prev, description: e.target.value }))}
-                    className="w-full p-2 border border-gray-300 rounded-lg mb-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    rows={2}
+                    className="w-full p-3 border border-gray-300 rounded-lg mb-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#00C4B3] focus:border-transparent"
+                    rows={3}
                   />
+                  
+                  {/* Priority and Due Date */}
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Priority</label>
+                      <select
+                        value={newActionItem.priority}
+                        onChange={(e) => setNewActionItem(prev => ({ ...prev, priority: e.target.value as 'LOW' | 'MEDIUM' | 'HIGH' }))}
+                        className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#00C4B3] focus:border-transparent"
+                        title="Select priority level"
+                      >
+                        <option value="LOW">Low Priority</option>
+                        <option value="MEDIUM">Medium Priority</option>
+                        <option value="HIGH">High Priority</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Due Date</label>
+                      <input
+                        type="date"
+                        value={newActionItem.dueDate ? new Date(newActionItem.dueDate).toISOString().split('T')[0] : ''}
+                        onChange={(e) => setNewActionItem(prev => ({ ...prev, dueDate: e.target.value ? new Date(e.target.value).toISOString() : '' }))}
+                        className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#00C4B3] focus:border-transparent"
+                        min={new Date().toISOString().split('T')[0]}
+                        title="Select due date"
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Assign to */}
+                  <div className="mb-4">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Assign to</label>
+                    <select
+                      value={newActionItem.assignedToId}
+                      onChange={(e) => setNewActionItem(prev => ({ ...prev, assignedToId: e.target.value }))}
+                      className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#00C4B3] focus:border-transparent"
+                      title="Assign to user"
+                    >
+                      <option value="">Auto-assign (Selected Agent or Default)</option>
+                      {agents.map(agent => (
+                        <option key={agent.id} value={agent.id}>
+                          {agent.firstName} {agent.lastName} ({agent.email})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {/* Actions */}
                   <div className="flex gap-2">
                     <button
                       onClick={handleCreateActionItem}
-                      className="flex-1 px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+                      className="flex-1 px-4 py-2 bg-gradient-to-r from-[#00C4B3] to-[#00B4A3] text-white rounded-lg hover:from-[#00B4A3] hover:to-[#00A393] transition-all duration-200 text-sm font-medium shadow-md hover:shadow-lg"
                     >
-                      Create
+                      ✓ Create Action Item
                     </button>
                     <button
                       onClick={() => {
                         setShowActionItemForm(false);
-                        setNewActionItem({ title: '', description: '' });
+                        setNewActionItem({ title: '', description: '', priority: 'MEDIUM', dueDate: '', assignedToId: '' });
                       }}
-                      className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm font-medium"
+                      className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm font-medium"
                     >
                       Cancel
                     </button>
@@ -1756,12 +2070,12 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
               ) : (
                 <button 
                   onClick={() => setShowActionItemForm(true)}
-                  className="w-full p-4 border-2 border-dashed border-indigo-300 rounded-lg text-indigo-600 hover:bg-indigo-50 hover:border-indigo-400 transition-colors flex items-center justify-center gap-2 mt-2"
+                  className="w-full p-4 border-2 border-dashed border-[#00C4B3] rounded-xl text-[#00C4B3] hover:bg-[#00C4B3]/5 hover:border-[#00C4B3] transition-all flex items-center justify-center gap-2 mt-4 font-medium"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                   </svg>
-                  Add new action item
+                  Add New Action Item
                 </button>
               )}
             </div>
