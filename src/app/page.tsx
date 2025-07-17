@@ -1866,130 +1866,89 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
                     </div>
 
                     {/* Scorecard Categories */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                       {/* Service Category */}
-                      <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
-                        <div className="flex items-center justify-between mb-4">
-                          <h4 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                              <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="text-md font-semibold text-gray-900 flex items-center gap-2">
+                            <div className="w-6 h-6 bg-blue-100 rounded-md flex items-center justify-center">
+                              <svg className="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                               </svg>
                             </div>
                             Service
                           </h4>
-                          <span className="text-2xl font-bold text-blue-600">
+                          <span className="text-xl font-bold text-blue-600">
                             {agentMetrics?.metrics?.CSAT?.value ? Math.round(agentMetrics.metrics.CSAT.value * 20) : 89}%
                           </span>
                         </div>
-                        <div className="space-y-3">
+                        <div className="space-y-1">
                           <div className="flex justify-between items-center">
-                            <span className="text-sm text-gray-600">Customer Satisfaction</span>
-                            <span className="font-medium">{agentMetrics?.metrics?.CSAT?.value ? Math.round(agentMetrics.metrics.CSAT.value * 20) : 89}%</span>
+                            <span className="text-xs text-gray-600">CSAT</span>
+                            <span className="text-sm font-medium">{agentMetrics?.metrics?.CSAT?.value ? Math.round(agentMetrics.metrics.CSAT.value * 20) : 89}%</span>
                           </div>
                           <div className="flex justify-between items-center">
-                            <span className="text-sm text-gray-600">Service Quality</span>
-                            <span className="font-medium">{agentMetrics?.metrics?.['Quality Score']?.value ? Math.round(agentMetrics.metrics['Quality Score'].value) : 92}%</span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-gray-600">Response Time</span>
-                            <span className="font-medium">Excellent</span>
+                            <span className="text-xs text-gray-600">Quality</span>
+                            <span className="text-sm font-medium">{agentMetrics?.metrics?.['Quality Score']?.value ? Math.round(agentMetrics.metrics['Quality Score'].value) : 92}%</span>
                           </div>
                         </div>
                       </div>
 
                       {/* Productivity Category */}
-                      <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
-                        <div className="flex items-center justify-between mb-4">
-                          <h4 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                            <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                              <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="text-md font-semibold text-gray-900 flex items-center gap-2">
+                            <div className="w-6 h-6 bg-green-100 rounded-md flex items-center justify-center">
+                              <svg className="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                               </svg>
                             </div>
                             Productivity
                           </h4>
-                          <span className="text-2xl font-bold text-green-600">
+                          <span className="text-xl font-bold text-green-600">
                             {agentMetrics?.metrics?.FCR?.value ? Math.round(agentMetrics.metrics.FCR.value) : 83}%
                           </span>
                         </div>
-                        <div className="space-y-3">
+                        <div className="space-y-1">
                           <div className="flex justify-between items-center">
-                            <span className="text-sm text-gray-600">First Call Resolution</span>
-                            <span className="font-medium">{agentMetrics?.metrics?.FCR?.value ? Math.round(agentMetrics.metrics.FCR.value) : 83}%</span>
+                            <span className="text-xs text-gray-600">FCR</span>
+                            <span className="text-sm font-medium">{agentMetrics?.metrics?.FCR?.value ? Math.round(agentMetrics.metrics.FCR.value) : 83}%</span>
                           </div>
                           <div className="flex justify-between items-center">
-                            <span className="text-sm text-gray-600">Average Handle Time</span>
-                            <span className="font-medium">
+                            <span className="text-xs text-gray-600">AHT</span>
+                            <span className="text-sm font-medium">
                               {agentMetrics?.metrics?.AHT?.value ? 
                                 `${Math.floor(agentMetrics.metrics.AHT.value / 60)}:${(agentMetrics.metrics.AHT.value % 60).toString().padStart(2, '0')}` : 
                                 '5:23'
                               }
                             </span>
                           </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-gray-600">Efficiency Score</span>
-                            <span className="font-medium">85%</span>
-                          </div>
                         </div>
                       </div>
 
                       {/* Quality Category */}
-                      <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
-                        <div className="flex items-center justify-between mb-4">
-                          <h4 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                            <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                              <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="text-md font-semibold text-gray-900 flex items-center gap-2">
+                            <div className="w-6 h-6 bg-purple-100 rounded-md flex items-center justify-center">
+                              <svg className="w-3 h-3 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                               </svg>
                             </div>
                             Quality
                           </h4>
-                          <span className="text-2xl font-bold text-purple-600">
+                          <span className="text-xl font-bold text-purple-600">
                             {agentMetrics?.metrics?.['Quality Score']?.value ? Math.round(agentMetrics.metrics['Quality Score'].value) : 92}%
                           </span>
                         </div>
-                        <div className="space-y-3">
+                        <div className="space-y-1">
                           <div className="flex justify-between items-center">
-                            <span className="text-sm text-gray-600">Call Quality</span>
-                            <span className="font-medium">{agentMetrics?.metrics?.['Quality Score']?.value ? Math.round(agentMetrics.metrics['Quality Score'].value) : 92}%</span>
+                            <span className="text-xs text-gray-600">Score</span>
+                            <span className="text-sm font-medium">{agentMetrics?.metrics?.['Quality Score']?.value ? Math.round(agentMetrics.metrics['Quality Score'].value) : 92}%</span>
                           </div>
                           <div className="flex justify-between items-center">
-                            <span className="text-sm text-gray-600">Compliance</span>
-                            <span className="font-medium">96%</span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-gray-600">Documentation</span>
-                            <span className="font-medium">88%</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Assiduity Category */}
-                      <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
-                        <div className="flex items-center justify-between mb-4">
-                          <h4 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                            <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
-                              <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                            </div>
-                            Assiduity
-                          </h4>
-                          <span className="text-2xl font-bold text-orange-600">95%</span>
-                        </div>
-                        <div className="space-y-3">
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-gray-600">Attendance Rate</span>
-                            <span className="font-medium">95%</span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-gray-600">Punctuality</span>
-                            <span className="font-medium">92%</span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-gray-600">Schedule Adherence</span>
-                            <span className="font-medium">94%</span>
+                            <span className="text-xs text-gray-600">Compliance</span>
+                            <span className="text-sm font-medium">96%</span>
                           </div>
                         </div>
                       </div>
