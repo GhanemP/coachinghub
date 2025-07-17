@@ -893,178 +893,216 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Header */}
-      <header className="sticky top-0 z-50 shadow-2xl">
-        {/* Background with gradient and effects */}
-        <div className="relative bg-gradient-to-r from-[#00C4B3] via-[#00D4C7] to-[#00E6DC] overflow-hidden">
-          {/* Top accent line */}
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-300 via-emerald-300 to-teal-200"></div>
-          
-          {/* Animated background pattern */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
-          </div>
-          
-          {/* Main header content */}
-          <div className="relative max-w-full mx-auto px-8 py-4">
-            <div className="flex justify-between items-center gap-4">
-              
-              {/* Left Section - Brand */}
-              <div className="flex items-center gap-4 min-w-0 flex-shrink-0">
-                {/* Logo */}
-                <div className="bg-white/20 rounded-xl p-2 shadow-lg border border-white/30 backdrop-blur-sm">
-                  <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+      {/* Modern Minimalistic Header */}
+      <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
+        <div className="max-w-full mx-auto px-6 py-4">
+          <div className="flex justify-between items-center">
+            
+            {/* Left Section - SmartSource Brand */}
+            <div className="flex items-center gap-6">
+              {/* SmartSource Logo */}
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  {/* SmartSource Logo SVG */}
+                  <svg width="40" height="40" viewBox="0 0 100 100" className="text-[#2B4C8C]">
+                    {/* Main S Shape */}
+                    <path 
+                      d="M20 30 Q50 10, 80 30 Q50 50, 80 70 Q50 90, 20 70 Q50 50, 20 30 Z" 
+                      fill="url(#smartsource-gradient)" 
+                      stroke="none"
+                    />
+                    <defs>
+                      <linearGradient id="smartsource-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#4ECDC4" />
+                        <stop offset="50%" stopColor="#2B4C8C" />
+                        <stop offset="100%" stopColor="#4ECDC4" />
+                      </linearGradient>
+                    </defs>
                   </svg>
                 </div>
-                
-                {/* Brand */}
                 <div className="flex flex-col">
-                  <h1 className="text-2xl font-black text-white drop-shadow-lg tracking-tight">
-                    Coaching Hub
-                  </h1>
-                  <p className="text-white/70 text-xs font-medium">Performance Excellence Platform</p>
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-xl font-bold text-[#2B4C8C] tracking-tight">
+                      SMART<span className="text-[#4ECDC4]">SOURCE</span>
+                    </h1>
+                    <span className="text-xs bg-[#4ECDC4] text-white px-2 py-0.5 rounded-full font-medium">
+                      PRO
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 font-medium">Coaching Excellence Platform</p>
                 </div>
               </div>
 
-              {/* Center Section - User Info */}
-              <div className="flex items-center gap-6 flex-1 justify-center">
-                
-                {/* User Profile Card */}
-                {session?.user && (
-                  <div className="bg-white/15 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/30 shadow-lg">
-                    <div className="flex items-center gap-3">
-                      {/* Avatar */}
-                      <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center border border-white/40">
-                        <span className="text-white font-bold text-sm">
-                          {session.user.firstName?.[0] || session.user.name?.[0]}{session.user.lastName?.[0] || session.user.name?.split(' ')[1]?.[0]}
-                        </span>
-                      </div>
-                      
-                      {/* User Details */}
-                      <div className="flex flex-col">
-                        <span className="text-white font-semibold text-sm leading-tight">
-                          {session.user.name || `${session.user.firstName} ${session.user.lastName}`}
-                        </span>
-                        <span className="text-white/70 text-xs">
-                          {session.user.email}
-                        </span>
-                        <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium text-white bg-white/20 rounded-full border border-white/30">
-                          <div className="w-1.5 h-1.5 bg-green-300 rounded-full mr-1.5 animate-pulse"></div>
-                          {session.user.role?.replace('_', ' ')}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
+              {/* Session Status Indicator */}
+              {currentSession && (
+                <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className={`w-2 h-2 rounded-full ${
+                    isSessionActive && !isSessionPaused ? 'bg-green-500 animate-pulse' :
+                    isSessionPaused ? 'bg-yellow-500' :
+                    'bg-gray-400'
+                  }`}></div>
+                  <span className="text-sm font-medium text-gray-700">
+                    Session #{currentSession.sessionNumber}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    {isSessionActive && !isSessionPaused ? 'Live' :
+                     isSessionPaused ? 'Paused' :
+                     'Ready'}
+                  </span>
+                </div>
+              )}
+            </div>
 
-                {/* Agent Selection for Supervisors */}
-                {session?.user && (session.user.role === 'TEAM_LEADER' || session.user.role === 'ADMIN' || session.user.role === 'MANAGER') && (
-                  <div className="bg-white/15 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/30 shadow-lg min-w-[180px]">
-                    <label className="block text-white/80 text-xs font-bold uppercase tracking-wide mb-2">Agent Selection</label>
-                    <select
-                      value={selectedAgentId}
-                      onChange={e => setSelectedAgentId(e.target.value)}
-                      title="Select Agent to Coach"
-                      className="w-full bg-white/20 backdrop-blur-sm border border-white/40 text-white rounded-lg px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/60 transition-all"
-                    >
-                      <option value="" className="bg-gray-800 text-white">-- Select Agent --</option>
-                      {agents.map(agent => (
-                        <option key={agent.id} value={agent.id} className="bg-gray-800 text-white">
-                          {agent.firstName} {agent.lastName}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-              </div>
+            {/* Center Section - User & Agent Info */}
+            <div className="flex items-center gap-4">
+              
+              {/* Agent Selection for Supervisors */}
+              {session?.user && (session.user.role === 'TEAM_LEADER' || session.user.role === 'ADMIN' || session.user.role === 'MANAGER') && (
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-medium text-gray-600">Coaching:</span>
+                  <select
+                    value={selectedAgentId}
+                    onChange={e => setSelectedAgentId(e.target.value)}
+                    title="Select Agent to Coach"
+                    className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#4ECDC4] focus:border-transparent hover:border-gray-400 transition-all"
+                  >
+                    <option value="">Select Agent</option>
+                    {agents.map(agent => (
+                      <option key={agent.id} value={agent.id}>
+                        {agent.firstName} {agent.lastName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
-              {/* Right Section - Controls */}
-              <div className="flex items-center gap-4 flex-shrink-0">
-                
-                {/* Timer Display */}
-                <div className="bg-white/15 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/30 shadow-lg">
-                  <div className="flex flex-col items-center">
-                    <span className="text-white/80 text-xs font-bold uppercase tracking-wide mb-1">Session Timer</span>
-                    <div className="text-2xl font-black text-white bg-white/10 px-4 py-2 rounded-lg backdrop-blur-sm border border-white/20 font-mono tracking-wide shadow-inner">
-                      {timer}
-                    </div>
+              {/* Current User Display */}
+              {session?.user && (
+                <div className="flex items-center gap-3 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="w-8 h-8 bg-gradient-to-br from-[#4ECDC4] to-[#2B4C8C] rounded-full flex items-center justify-center">
+                    <span className="text-white font-bold text-sm">
+                      {session.user.firstName?.[0] || session.user.name?.[0]}{session.user.lastName?.[0] || session.user.name?.split(' ')[1]?.[0]}
+                    </span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-semibold text-gray-800">
+                      {session.user.name || `${session.user.firstName} ${session.user.lastName}`}
+                    </span>
+                    <span className="text-xs text-gray-500 capitalize">
+                      {session.user.role?.replace('_', ' ').toLowerCase()}
+                    </span>
                   </div>
                 </div>
-                
-                {/* Session Controls */}
-                <div className="flex flex-col gap-2">
-                  {!isSessionActive ? (
-                    <button
-                      onClick={startSession}
-                      className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 border border-white/20"
-                    >
-                      🚀 Start Session
-                    </button>
-                  ) : (
-                    <div className="flex gap-2">
-                      {isSessionPaused ? (
-                        <button
-                          onClick={resumeSession}
-                          className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-4 py-2 rounded-lg font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 border border-white/20 text-sm"
-                        >
-                          ▶️ Resume
-                        </button>
-                      ) : (
-                        <button
-                          onClick={pauseSession}
-                          className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white px-4 py-2 rounded-lg font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 border border-white/20 text-sm"
-                        >
-                          ⏸️ Pause
-                        </button>
-                      )}
+              )}
+            </div>
+
+            {/* Right Section - Timer & Controls */}
+            <div className="flex items-center gap-4">
+              
+              {/* Timer Display */}
+              <div className="flex items-center gap-3 px-4 py-2 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="flex flex-col items-center">
+                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Timer</span>
+                  <div className="text-lg font-bold text-gray-800 font-mono">
+                    {timer}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Session Controls */}
+              <div className="flex items-center gap-2">
+                {!isSessionActive ? (
+                  <button
+                    onClick={startSession}
+                    className="flex items-center gap-2 bg-[#4ECDC4] hover:bg-[#3ABCB5] text-white px-4 py-2 rounded-lg font-medium shadow-sm hover:shadow-md transition-all duration-200"
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M8 5v14l11-7z"/>
+                    </svg>
+                    Start
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    {isSessionPaused ? (
                       <button
-                        onClick={stopSession}
-                        className="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white px-4 py-2 rounded-lg font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 border border-white/20 text-sm"
+                        onClick={resumeSession}
+                        className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg font-medium shadow-sm hover:shadow-md transition-all duration-200"
                       >
-                        ⏹️ Stop
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M8 5v14l11-7z"/>
+                        </svg>
+                        Resume
                       </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex flex-col gap-2">
-                  {/* Admin Panel Button */}
-                  {session?.user?.role === 'ADMIN' && (
+                    ) : (
+                      <button
+                        onClick={pauseSession}
+                        className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-2 rounded-lg font-medium shadow-sm hover:shadow-md transition-all duration-200"
+                      >
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+                        </svg>
+                        Pause
+                      </button>
+                    )}
                     <button
-                      onClick={() => router.push('/admin')}
-                      className="bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white px-4 py-2 rounded-lg font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 border border-white/20 text-sm"
+                      onClick={stopSession}
+                      className="flex items-center gap-2 bg-gray-500 hover:bg-gray-600 text-white px-3 py-2 rounded-lg font-medium shadow-sm hover:shadow-md transition-all duration-200"
                     >
-                      ⚙️ Admin
-                    </button>
-                  )}
-
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => signOut()}
-                      className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white px-4 py-2 rounded-lg font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 border border-white/20 text-sm"
-                    >
-                      🚪 Sign Out
-                    </button>
-                    <button
-                      onClick={() => router.push('/settings')}
-                      className="bg-gradient-to-r from-slate-500 to-slate-600 hover:from-slate-600 hover:to-slate-700 text-white px-4 py-2 rounded-lg font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 border border-white/20 text-sm"
-                    >
-                      ⚙️ Settings
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M6 6h12v12H6z"/>
+                      </svg>
+                      Stop
                     </button>
                   </div>
-                </div>
+                )}
+              </div>
+
+              {/* Action Menu */}
+              <div className="flex items-center gap-2">
+                {/* Admin Panel Button */}
+                {session?.user?.role === 'ADMIN' && (
+                  <button
+                    onClick={() => router.push('/admin')}
+                    className="flex items-center gap-2 text-gray-600 hover:text-[#2B4C8C] px-3 py-2 rounded-lg hover:bg-gray-50 transition-all duration-200"
+                    title="Admin Panel"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Admin
+                  </button>
+                )}
+
+                {/* Settings Button */}
+                <button
+                  onClick={() => router.push('/settings')}
+                  className="text-gray-600 hover:text-[#2B4C8C] p-2 rounded-lg hover:bg-gray-50 transition-all duration-200"
+                  title="Settings"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </button>
+
+                {/* Sign Out Button */}
+                <button
+                  onClick={() => signOut()}
+                  className="text-gray-600 hover:text-red-600 p-2 rounded-lg hover:bg-gray-50 transition-all duration-200"
+                  title="Sign Out"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                </button>
               </div>
             </div>
           </div>
-          
-          {/* Bottom accent line */}
-          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-white/20 via-white/40 to-white/20"></div>
         </div>
       </header>
 
-      {/* Live Session Widget - Compact draggable widget for team leaders */}
+      {/* Live Session Widget - Modern compact widget for team leaders */}
       {currentSession && isSessionActive && (
         <div 
           className="fixed z-40 select-none"
@@ -1075,45 +1113,45 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
           }}
           onMouseDown={handleMouseDown}
         >
-          <div className="bg-gradient-to-b from-[#00C4B3] to-[#00B4A3] rounded-2xl p-4 shadow-2xl border border-white/30 backdrop-blur-lg w-72 transform hover:scale-105 transition-transform duration-200">
+          <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4 w-72 backdrop-blur-sm">
             {/* Widget Header */}
             <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <div className="relative">
                   <div className="w-3 h-3 bg-red-400 rounded-full animate-ping absolute"></div>
                   <div className="w-3 h-3 bg-red-500 rounded-full relative z-10"></div>
                 </div>
-                <h3 className="text-white font-bold text-sm uppercase tracking-wide">Live Session</h3>
+                <h3 className="text-gray-800 font-semibold text-sm uppercase tracking-wide">Live Session</h3>
               </div>
-              <div className="text-white font-black text-xl">
+              <div className="text-gray-800 font-bold text-lg">
                 #{currentSession.sessionNumber}
               </div>
             </div>
 
             {/* Timer Display */}
-            <div className="bg-white/15 rounded-lg p-3 mb-4 text-center">
-              <div className="text-white/80 text-xs font-medium uppercase tracking-wide mb-1">Duration</div>
-              <div className="text-2xl font-black text-white font-mono tracking-wider">
+            <div className="bg-gray-50 rounded-lg p-3 mb-4 text-center border border-gray-100">
+              <div className="text-gray-500 text-xs font-medium uppercase tracking-wide mb-1">Duration</div>
+              <div className="text-2xl font-bold text-gray-800 font-mono tracking-wider">
                 {timer}
               </div>
             </div>
 
             {/* Status Grid */}
             <div className="grid grid-cols-2 gap-3 mb-4">
-              <div className="bg-white/10 rounded-lg p-2">
-                <div className="text-white/70 text-xs font-medium uppercase tracking-wide">Status</div>
-                <div className={`text-sm font-bold ${
-                  currentSession.status === 'ACTIVE' ? 'text-green-300' :
-                  currentSession.status === 'PAUSED' ? 'text-yellow-300' :
-                  'text-white'
+              <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                <div className="text-gray-500 text-xs font-medium uppercase tracking-wide">Status</div>
+                <div className={`text-sm font-semibold ${
+                  currentSession.status === 'ACTIVE' ? 'text-green-600' :
+                  currentSession.status === 'PAUSED' ? 'text-yellow-600' :
+                  'text-gray-800'
                 }`}>
                   {currentSession.status}
                 </div>
               </div>
               
-              <div className="bg-white/10 rounded-lg p-2">
-                <div className="text-white/70 text-xs font-medium uppercase tracking-wide">Type</div>
-                <div className="text-white font-bold text-sm">
+              <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                <div className="text-gray-500 text-xs font-medium uppercase tracking-wide">Type</div>
+                <div className="text-gray-800 font-semibold text-sm">
                   {currentSession.type?.replace('_', ' ')}
                 </div>
               </div>
@@ -1121,19 +1159,19 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
 
             {/* Agent Info (if selected) */}
             {selectedAgentId && (
-              <div className="bg-white/10 rounded-lg p-3 mb-4">
-                <div className="text-white/70 text-xs font-medium uppercase tracking-wide mb-2">Agent</div>
+              <div className="bg-gray-50 rounded-lg p-3 mb-4 border border-gray-100">
+                <div className="text-gray-500 text-xs font-medium uppercase tracking-wide mb-2">Agent</div>
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center border border-white/30">
+                  <div className="w-8 h-8 bg-[#4ECDC4] rounded-full flex items-center justify-center">
                     <span className="text-white text-xs font-bold">
                       {agents.find(a => a.id === selectedAgentId)?.firstName?.[0]}{agents.find(a => a.id === selectedAgentId)?.lastName?.[0]}
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-white font-semibold text-sm truncate">
+                    <div className="text-gray-800 font-semibold text-sm truncate">
                       {agents.find(a => a.id === selectedAgentId)?.firstName} {agents.find(a => a.id === selectedAgentId)?.lastName}
                     </div>
-                    <div className="text-white/60 text-xs truncate">
+                    <div className="text-gray-500 text-xs truncate">
                       {agents.find(a => a.id === selectedAgentId)?.email}
                     </div>
                   </div>
@@ -1141,100 +1179,55 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
               </div>
             )}
 
-            {/* Action Items Summary */}
-            <div className="bg-white/10 rounded-lg p-3 mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-white/80 text-xs font-medium uppercase tracking-wide">Action Items</span>
-                <span className="bg-white/20 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                  {actionItems.length}
-                </span>
-              </div>
-              
-              <div className="grid grid-cols-3 gap-2">
-                <div className="text-center bg-yellow-500/20 rounded-md p-2">
-                  <div className="text-yellow-300 font-bold text-lg">
-                    {actionItems.filter(item => item.status === 'PENDING').length}
-                  </div>
-                  <div className="text-white/70 text-xs">Pending</div>
-                </div>
-                <div className="text-center bg-blue-500/20 rounded-md p-2">
-                  <div className="text-blue-300 font-bold text-lg">
-                    {actionItems.filter(item => item.status === 'IN_PROGRESS').length}
-                  </div>
-                  <div className="text-white/70 text-xs">Progress</div>
-                </div>
-                <div className="text-center bg-green-500/20 rounded-md p-2">
-                  <div className="text-green-300 font-bold text-lg">
-                    {actionItems.filter(item => item.status === 'COMPLETED').length}
-                  </div>
-                  <div className="text-white/70 text-xs">Done</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Stats */}
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              <div className="bg-white/10 rounded-lg p-2 text-center">
-                <div className="text-white font-bold text-lg">{goals.length}</div>
-                <div className="text-white/70 text-xs">Goals</div>
-              </div>
-              <div className="bg-white/10 rounded-lg p-2 text-center">
-                <div className="text-white font-bold text-lg">
-                  {currentSession.overallScore || '--'}
-                </div>
-                <div className="text-white/70 text-xs">Score</div>
-              </div>
-            </div>
-
             {/* Control Buttons */}
-            <div className="space-y-2">
-              <div className="flex gap-2">
-                {isSessionPaused ? (
-                  <button
-                    onClick={resumeSession}
-                    className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white py-2 px-3 rounded-lg font-semibold text-xs shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
-                  >
-                    ▶️ Resume
-                  </button>
-                ) : (
-                  <button
-                    onClick={pauseSession}
-                    className="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white py-2 px-3 rounded-lg font-semibold text-xs shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
-                  >
-                    ⏸️ Pause
-                  </button>
-                )}
-                
+            <div className="flex gap-2">
+              {isSessionPaused ? (
                 <button
-                  onClick={stopSession}
-                  className="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white py-2 px-3 rounded-lg font-semibold text-xs shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+                  onClick={resumeSession}
+                  className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-lg font-medium text-sm shadow-sm hover:shadow-md transition-all duration-200"
                 >
-                  ⏹️ End
+                  ▶️ Resume
                 </button>
-              </div>
+              ) : (
+                <button
+                  onClick={pauseSession}
+                  className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white py-2 px-3 rounded-lg font-medium text-sm shadow-sm hover:shadow-md transition-all duration-200"
+                >
+                  ⏸️ Pause
+                </button>
+              )}
+              
+              <button
+                onClick={stopSession}
+                className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-2 px-3 rounded-lg font-medium text-sm shadow-sm hover:shadow-md transition-all duration-200"
+              >
+                ⏹️ Stop
+              </button>
             </div>
 
             {/* Drag indicator */}
             <div className="flex justify-center mt-3">
-              <div className="w-8 h-1 bg-white/30 rounded-full"></div>
+              <div className="w-8 h-1 bg-gray-300 rounded-full"></div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Main Content */}
-      <div className="max-w-none mx-auto p-4">
-        <div className="grid grid-cols-12 gap-4 h-[calc(100vh-140px)]">
+      {/* Main Dashboard Content */}
+      <div className="max-w-none mx-auto p-6 bg-gray-50 min-h-[calc(100vh-80px)]">
+        <div className="grid grid-cols-12 gap-6 h-[calc(100vh-140px)]">
           {/* Previous Sessions Column */}
-          <div className="col-span-3 bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col h-full border border-[#00C4B3]/20">
-            <div className="px-5 py-4 border-b border-gray-200 flex justify-between items-center flex-shrink-0">
-              <h3 className="text-base font-semibold text-gray-800 flex items-center gap-2">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+          <div className="col-span-3 bg-white rounded-xl shadow-sm overflow-hidden flex flex-col h-full border border-gray-100">
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center flex-shrink-0 bg-gray-50/50">
+              <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                <div className="w-8 h-8 bg-[#2B4C8C] rounded-lg flex items-center justify-center">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
                 Previous Sessions
               </h3>
-              <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs font-medium">{previousSessions.length}</span>
+              <span className="bg-white text-gray-600 px-3 py-1 rounded-full text-sm font-medium border border-gray-200 shadow-sm">{previousSessions.length}</span>
             </div>
             <div className="flex-1 overflow-y-auto p-4">
               {/* Session Cards */}
@@ -1485,9 +1478,9 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
             )}
 
             {/* Session Content */}
-            <div className="bg-white rounded-xl shadow flex-1 flex flex-col overflow-hidden min-h-0">
+            <div className="bg-white rounded-xl shadow-sm flex-1 flex flex-col overflow-hidden min-h-0 border border-gray-100">
               {/* Tabs */}
-              <div className="flex border-b border-gray-200">
+              <div className="flex border-b border-gray-100 bg-gray-50/50">
                 {[
                   { id: 'notes', label: 'Session Notes', roles: ['TEAM_LEADER', 'MANAGER', 'ADMIN'] },
                   { id: 'evaluation', label: 'Evaluation', roles: ['TEAM_LEADER', 'MANAGER', 'ADMIN'] },
@@ -1497,10 +1490,10 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
                   <button
                     key={tab.id}
                     onClick={() => handleTabSwitch(tab.id)}
-                    className={`px-6 py-4 font-medium text-sm border-b-2 transition-colors ${
+                    className={`px-6 py-3 font-medium text-sm border-b-2 transition-all duration-200 ${
                       activeTab === tab.id 
-                        ? 'text-indigo-600 border-indigo-600' 
-                        : 'text-gray-500 border-transparent hover:text-gray-700'
+                        ? 'text-[#2B4C8C] border-[#4ECDC4] bg-white' 
+                        : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50'
                     }`}
                   >
                     {tab.label}
@@ -1706,30 +1699,32 @@ Created by: ${item.createdBy?.firstName} ${item.createdBy?.lastName}
           </div>
 
           {/* Enhanced Action Items Column */}
-          <div className="col-span-3 bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col h-full border border-[#00C4B3]/20">
+          <div className="col-span-3 bg-white rounded-xl shadow-sm overflow-hidden flex flex-col h-full border border-gray-100">
             {/* Header with filters and controls */}
-            <div className="px-5 py-4 border-b border-gray-200 flex-shrink-0">
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="text-base font-semibold text-gray-800 flex items-center gap-2">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 012 2h2a2 2 0 012-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                  </svg>
+            <div className="px-6 py-4 border-b border-gray-100 flex-shrink-0 bg-gray-50/50">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                  <div className="w-8 h-8 bg-[#4ECDC4] rounded-lg flex items-center justify-center">
+                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 012 2h2a2 2 0 012-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                    </svg>
+                  </div>
                   Action Items
                 </h3>
-                <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs font-medium">
+                <span className="bg-white text-gray-600 px-3 py-1 rounded-full text-sm font-medium border border-gray-200 shadow-sm">
                   {actionItems.length}
                 </span>
               </div>
               
               {/* Status Overview */}
-              <div className="grid grid-cols-4 gap-2 mb-3">
-                <div className="text-center bg-yellow-50 rounded-lg p-2 border border-yellow-200">
+              <div className="grid grid-cols-4 gap-2 mb-4">
+                <div className="text-center bg-yellow-50 rounded-lg p-3 border border-yellow-200/50">
                   <div className="text-lg font-bold text-yellow-600">
                     {actionItems.filter(item => item.status === 'PENDING').length}
                   </div>
                   <div className="text-xs font-medium text-yellow-700">Pending</div>
                 </div>
-                <div className="text-center bg-blue-50 rounded-lg p-2 border border-blue-200">
+                <div className="text-center bg-blue-50 rounded-lg p-3 border border-blue-200/50">
                   <div className="text-lg font-bold text-blue-600">
                     {actionItems.filter(item => item.status === 'IN_PROGRESS').length}
                   </div>
