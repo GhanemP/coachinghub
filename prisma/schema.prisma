@@ -84,6 +84,11 @@ model User {
   tenure            DateTime?   // Date when they joined
   isActive          Boolean     @default(true)
   
+  // Hierarchy Relations
+  managerId         String?     // Manager who oversees this user
+  manager           User?       @relation("ManagerSubordinates", fields: [managerId], references: [id])
+  subordinates      User[]      @relation("ManagerSubordinates")
+  
   // Relations
   teamMemberships   TeamMember[]
   ledSessions       CoachingSession[] @relation("TeamLeader")

@@ -1,39 +1,74 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-
-const prisma = new PrismaClient();
+import { canModifyUser, canAccessUser, prisma } from '@/lib/rbac';
 
 export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     
-    if (!session?.user) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Only ADMIN and MANAGER can modify users
-    if (session.user.role !== 'ADMIN' && session.user.role !== 'MANAGER') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    // Get the current user from database
+    const currentUser = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    });
+
+    if (!currentUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     const { params } = context;
     const resolvedParams = await params;
+    const targetUserId = resolvedParams.id;
+
+    // Check if current user can modify this user
+    const canModify = await canModifyUser(currentUser.id, currentUser.role, targetUserId);
+    if (!canModify) {
+      return NextResponse.json({ error: 'Forbidden: Cannot modify this user' }, { status: 403 });
+    }
+
     const data = await req.json();
 
     // Only ADMIN can promote to ADMIN role
-    if (data.role === 'ADMIN' && session.user.role !== 'ADMIN') {
+    if (data.role === 'ADMIN' && currentUser.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Only admins can create other admins' }, { status: 403 });
     }
 
+    // Managers cannot promote users to their own level or higher
+    if (currentUser.role === 'MANAGER' && ['MANAGER', 'ADMIN'].includes(data.role)) {
+      return NextResponse.json({ error: 'Managers cannot promote users to manager or admin level' }, { status: 403 });
+    }
+
+    // Build update data
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const updateData: any = {};
+    
+    if (data.email !== undefined) updateData.email = data.email;
+    if (data.firstName !== undefined) updateData.firstName = data.firstName;
+    if (data.lastName !== undefined) updateData.lastName = data.lastName;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+    if (data.department !== undefined) updateData.department = data.department;
+    if (data.managerId !== undefined) updateData.managerId = data.managerId;
+    
+    if (data.role !== undefined) {
+      updateData.role = data.role;
+      
+      // Handle hierarchy assignment based on role changes (only if no explicit managerId provided)
+      if (data.managerId === undefined) {
+        if (data.role === 'TEAM_LEADER' && currentUser.role === 'MANAGER') {
+          updateData.managerId = currentUser.id;
+        } else if (data.role === 'AGENT' && currentUser.role === 'TEAM_LEADER') {
+          updateData.managerId = currentUser.id;
+        }
+      }
+    }
+
     const updatedUser = await prisma.user.update({
-      where: { id: resolvedParams.id },
-      data: {
-        role: data.role,
-        isActive: data.isActive,
-        department: data.department,
-      },
+      where: { id: targetUserId },
+      data: updateData,
       select: {
         id: true,
         email: true,
@@ -43,12 +78,26 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
         department: true,
         isActive: true,
         createdAt: true,
+        managerId: true,
+        manager: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            role: true
+          }
+        }
       },
     });
 
     return NextResponse.json(updatedUser);
   } catch (error) {
     console.error('Error updating user:', error);
+    
+    if (error instanceof Error && error.message.includes('Unauthorized')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -57,37 +106,62 @@ export async function DELETE(_req: NextRequest, context: { params: Promise<{ id:
   try {
     const session = await getServerSession(authOptions);
     
-    if (!session?.user) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Only ADMIN can delete users
-    if (session.user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Only admins can delete users' }, { status: 403 });
+    // Get the current user from database
+    const currentUser = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    });
+
+    if (!currentUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     const { params } = context;
     const resolvedParams = await params;
+    const targetUserId = resolvedParams.id;
+
+    // Only ADMIN can delete users
+    if (currentUser.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Only admins can delete users' }, { status: 403 });
+    }
 
     // Prevent deleting yourself
-    if (resolvedParams.id === session.user.id) {
+    if (targetUserId === currentUser.id) {
       return NextResponse.json({ error: 'Cannot delete yourself' }, { status: 400 });
+    }
+
+    // Check if current user can access this user
+    const canAccess = await canAccessUser(currentUser.id, currentUser.role, targetUserId);
+    if (!canAccess) {
+      return NextResponse.json({ error: 'Forbidden: Cannot access this user' }, { status: 403 });
     }
 
     // Check for existing relationships before deletion
     const userRelationships = await prisma.user.findUnique({
-      where: { id: resolvedParams.id },
+      where: { id: targetUserId },
       include: {
         ledSessions: true,
         receivedSessions: true,
         createdActions: true,
         assignedActions: true,
         templates: true,
+        subordinates: true,
       }
     });
 
     if (!userRelationships) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // If user has subordinates, reassign them to current user or remove manager
+    if (userRelationships.subordinates.length > 0) {
+      await prisma.user.updateMany({
+        where: { managerId: targetUserId },
+        data: { managerId: currentUser.id } // Reassign to current admin
+      });
     }
 
     // If user has active relationships, mark as inactive instead of deleting

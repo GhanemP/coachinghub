@@ -14,6 +14,14 @@ interface User {
   department?: string;
   isActive: boolean;
   createdAt: string;
+  managerId?: string;
+  manager?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    role: string;
+    managerId?: string;
+  };
 }
 
 interface AuditLog {
@@ -46,24 +54,45 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showUserModal, setShowUserModal] = useState(false);
+  const [showCreateUserModal, setShowCreateUserModal] = useState(false);
+  const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [newUser, setNewUser] = useState({
+    email: '',
+    firstName: '',
+    lastName: '',
+    role: 'AGENT',
+    department: '',
+    managerId: ''
+  });
   const [newEmail, setNewEmail] = useState('');
   const [newDomain, setNewDomain] = useState('');
   const [newEmailNotes, setNewEmailNotes] = useState('');
 
   // Check if user is admin or manager
   useEffect(() => {
-    if (status === 'loading') return;
+    console.log('Admin useEffect triggered:', { status, session });
+    
+    if (status === 'loading') {
+      console.log('Session still loading...');
+      return;
+    }
     
     if (!session) {
+      console.log('No session found, redirecting to login');
       redirect('/login');
       return;
     }
 
-    if (session.user?.role !== 'ADMIN' && session.user?.role !== 'MANAGER') {
+    console.log('Session found:', session.user);
+
+    if (session.user?.role !== 'ADMIN' && session.user?.role !== 'MANAGER' && session.user?.role !== 'TEAM_LEADER') {
+      console.log('User role not authorized:', session.user?.role);
       redirect('/');
       return;
     }
 
+    console.log('User authorized, fetching data...');
     fetchUsers();
     if (session.user?.role === 'ADMIN') {
       fetchAuditLogs();
@@ -72,15 +101,33 @@ export default function AdminPage() {
   }, [session, status]);
 
   const fetchUsers = async () => {
+    console.log('fetchUsers called');
     try {
-      const response = await fetch('/api/admin/users');
+      console.log('Calling main users API...');
+      const response = await fetch('/api/admin/users', {
+        credentials: 'include', // Include cookies for session
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      console.log('API response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('Users data received:', data);
+        console.log('First user structure:', data[0]);
         setUsers(data);
+      } else if (response.status === 401) {
+        console.error('Unauthorized - redirecting to login');
+        redirect('/login');
+      } else {
+        const errorText = await response.text();
+        console.error('Failed to fetch users:', response.status, response.statusText, errorText);
       }
     } catch (error) {
       console.error('Error fetching users:', error);
     } finally {
+      console.log('Setting loading to false');
       setLoading(false);
     }
   };
@@ -152,12 +199,17 @@ export default function AdminPage() {
       });
 
       if (response.ok) {
+        const updatedUser = await response.json();
         setUsers(users.map(user => 
-          user.id === userId ? { ...user, role: newRole } : user
+          user.id === userId ? { ...user, ...updatedUser } : user
         ));
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to update user role');
       }
     } catch (error) {
       console.error('Error updating user role:', error);
+      alert('Failed to update user role');
     }
   };
 
@@ -172,18 +224,25 @@ export default function AdminPage() {
       });
 
       if (response.ok) {
+        const updatedUser = await response.json();
         setUsers(users.map(user => 
-          user.id === userId ? { ...user, isActive } : user
+          user.id === userId ? { ...user, ...updatedUser } : user
         ));
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to update user status');
       }
     } catch (error) {
       console.error('Error updating user status:', error);
+      alert('Failed to update user status');
     }
   };
 
   const viewUserDetails = (user: User) => {
+    console.log('viewUserDetails called with user:', user);
     setSelectedUser(user);
     setShowUserModal(true);
+    console.log('Modal state set - selectedUser:', user, 'showUserModal:', true);
   };
 
   const deleteUser = async (userId: string) => {
@@ -195,10 +254,123 @@ export default function AdminPage() {
 
         if (response.ok) {
           setUsers(users.filter(user => user.id !== userId));
+        } else {
+          const error = await response.json();
+          alert(error.error || 'Failed to delete user');
         }
       } catch (error) {
         console.error('Error deleting user:', error);
+        alert('Failed to delete user');
       }
+    }
+  };
+
+  // Helper function to get available role options for current user
+  const getAvailableRoles = (currentUserRole: string) => {
+    const roles = [];
+    
+    if (currentUserRole === 'ADMIN') {
+      roles.push('AGENT', 'TEAM_LEADER', 'MANAGER', 'ADMIN');
+    } else if (currentUserRole === 'MANAGER') {
+      roles.push('AGENT', 'TEAM_LEADER');
+    } else if (currentUserRole === 'TEAM_LEADER') {
+      roles.push('AGENT');
+    }
+    
+    return roles;
+  };
+
+  // Helper function to check if current user can modify target user
+  const canModifyUser = (targetUser: User) => {
+    const currentUserRole = session?.user?.role;
+    const currentUserId = session?.user?.id;
+    
+    // Admins can modify anyone except other admins (unless it's themselves)
+    if (currentUserRole === 'ADMIN') {
+      return targetUser.role !== 'ADMIN' || targetUser.id === currentUserId;
+    }
+    
+    // Managers can modify their direct reports and their subordinates
+    if (currentUserRole === 'MANAGER') {
+      return targetUser.managerId === currentUserId || 
+             (targetUser.manager?.managerId === currentUserId && targetUser.role === 'AGENT');
+    }
+    
+    // Team leaders can modify their direct reports (agents)
+    if (currentUserRole === 'TEAM_LEADER') {
+      return targetUser.managerId === currentUserId && targetUser.role === 'AGENT';
+    }
+    
+    return false;
+  };
+
+  const createUser = async () => {
+    try {
+      const response = await fetch('/api/admin/create-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...newUser,
+          managerId: newUser.managerId || undefined
+        })
+      });
+
+      if (response.ok) {
+        const createdUser = await response.json();
+        setUsers([...users, createdUser]);
+        setNewUser({
+          email: '',
+          firstName: '',
+          lastName: '',
+          role: 'AGENT',
+          department: '',
+          managerId: ''
+        });
+        setShowCreateUserModal(false);
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to create user');
+      }
+    } catch (error) {
+      console.error('Error creating user:', error);
+      alert('Failed to create user');
+    }
+  };
+
+  const updateUser = async () => {
+    if (!editingUser) return;
+    
+    try {
+      const response = await fetch(`/api/admin/users/${editingUser.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: editingUser.email,
+          firstName: editingUser.firstName,
+          lastName: editingUser.lastName,
+          role: editingUser.role,
+          department: editingUser.department,
+          managerId: editingUser.managerId || null,
+          isActive: editingUser.isActive
+        })
+      });
+
+      if (response.ok) {
+        const updatedUser = await response.json();
+        setUsers(users.map(user => 
+          user.id === editingUser.id ? { ...updatedUser } : user
+        ));
+        setShowEditUserModal(false);
+        setEditingUser(null);
+        // Refresh the users list to get updated manager relationships
+        fetchUsers();
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to update user');
+      }
+    } catch (error) {
+      console.error('Error updating user:', error);
+      alert('Failed to update user');
     }
   };
 
@@ -348,9 +520,19 @@ export default function AdminPage() {
 
         {/* Users Table */}
         <div className="bg-white rounded-lg shadow">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">User Management</h2>
-            <p className="text-sm text-gray-600">Manage user roles and permissions</p>
+          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">User Management</h2>
+              <p className="text-sm text-gray-600">Manage user roles and permissions</p>
+            </div>
+            {session?.user?.role === 'ADMIN' && (
+              <button
+                onClick={() => setShowCreateUserModal(true)}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                Create User
+              </button>
+            )}
           </div>
           
           <div className="overflow-x-auto">
@@ -359,6 +541,7 @@ export default function AdminPage() {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Manager</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
@@ -384,33 +567,55 @@ export default function AdminPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <select
-                        title={`Change role for ${user.firstName} ${user.lastName}`}
-                        value={user.role}
-                        onChange={(e) => updateUserRole(user.id, e.target.value)}
-                        className={`text-xs font-semibold px-2 py-1 rounded-full border-0 ${getRoleBadgeColor(user.role)}`}
-                        disabled={session?.user?.role !== 'ADMIN' && user.role === 'ADMIN'}
-                      >
-                        <option value="AGENT">AGENT</option>
-                        <option value="TEAM_LEADER">TEAM_LEADER</option>
-                        <option value="MANAGER">MANAGER</option>
-                        {session?.user?.role === 'ADMIN' && <option value="ADMIN">ADMIN</option>}
-                      </select>
+                      {canModifyUser(user) ? (
+                        <select
+                          title={`Change role for ${user.firstName} ${user.lastName}`}
+                          value={user.role}
+                          onChange={(e) => updateUserRole(user.id, e.target.value)}
+                          className={`text-xs font-semibold px-2 py-1 rounded-full border-0 ${getRoleBadgeColor(user.role)}`}
+                        >
+                          {getAvailableRoles(session?.user?.role || '').map(role => (
+                            <option key={role} value={role}>{role}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className={`text-xs font-semibold px-2 py-1 rounded-full ${getRoleBadgeColor(user.role)}`}>
+                          {user.role}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {user.manager ? (
+                        <div>
+                          <div className="font-medium">{user.manager.firstName} {user.manager.lastName}</div>
+                          <div className="text-xs text-gray-500">{user.manager.role}</div>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">No manager</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {user.department || 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <button
-                        onClick={() => toggleUserStatus(user.id, !user.isActive)}
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          user.isActive
-                            ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                            : 'bg-red-100 text-red-800 hover:bg-red-200'
-                        } transition-colors`}
-                      >
-                        {user.isActive ? 'Active' : 'Inactive'}
-                      </button>
+                      {canModifyUser(user) ? (
+                        <button
+                          onClick={() => toggleUserStatus(user.id, !user.isActive)}
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            user.isActive
+                              ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                              : 'bg-red-100 text-red-800 hover:bg-red-200'
+                          } transition-colors`}
+                        >
+                          {user.isActive ? 'Active' : 'Inactive'}
+                        </button>
+                      ) : (
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}>
+                          {user.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {new Date(user.createdAt).toLocaleDateString()}
@@ -422,7 +627,7 @@ export default function AdminPage() {
                       >
                         View
                       </button>
-                      {session?.user?.role === 'ADMIN' && (
+                      {canModifyUser(user) && session?.user?.role === 'ADMIN' && (
                         <button
                           onClick={() => deleteUser(user.id)}
                           className="text-red-600 hover:text-red-900"
@@ -661,6 +866,15 @@ export default function AdminPage() {
                   <p className="text-sm text-gray-900">{selectedUser.department || 'N/A'}</p>
                 </div>
                 <div>
+                  <label className="text-sm font-medium text-gray-500">Manager</label>
+                  <p className="text-sm text-gray-900">
+                    {selectedUser.manager 
+                      ? `${selectedUser.manager.firstName} ${selectedUser.manager.lastName} (${selectedUser.manager.role})`
+                      : 'No manager assigned'
+                    }
+                  </p>
+                </div>
+                <div>
                   <label className="text-sm font-medium text-gray-500">Status</label>
                   <p className={`text-sm ${selectedUser.isActive ? 'text-green-600' : 'text-red-600'}`}>
                     {selectedUser.isActive ? 'Active' : 'Inactive'}
@@ -683,12 +897,268 @@ export default function AdminPage() {
                 </button>
                 <button
                   onClick={() => {
-                    // You can add edit functionality here
+                    setEditingUser(selectedUser);
                     setShowUserModal(false);
+                    setShowEditUserModal(true);
                   }}
                   className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors"
                 >
                   Edit User
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create User Modal */}
+      {showCreateUserModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Create New User</h3>
+              <button
+                onClick={() => setShowCreateUserModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+                title="Close modal"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Email</label>
+                <input
+                  type="email"
+                  value={newUser.email}
+                  onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  placeholder="user@company.com"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">First Name</label>
+                  <input
+                    type="text"
+                    value={newUser.firstName}
+                    onChange={(e) => setNewUser({ ...newUser, firstName: e.target.value })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    placeholder="First Name"
+                    title="Enter first name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Last Name</label>
+                  <input
+                    type="text"
+                    value={newUser.lastName}
+                    onChange={(e) => setNewUser({ ...newUser, lastName: e.target.value })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    placeholder="Last Name"
+                    title="Enter last name"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Role</label>
+                <select
+                  value={newUser.role}
+                  onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  title="Select user role"
+                >
+                  <option value="AGENT">Agent</option>
+                  <option value="TEAM_LEADER">Team Leader</option>
+                  <option value="MANAGER">Manager</option>
+                  {session?.user?.role === 'ADMIN' && <option value="ADMIN">Admin</option>}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Department</label>
+                <input
+                  type="text"
+                  value={newUser.department}
+                  onChange={(e) => setNewUser({ ...newUser, department: e.target.value })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  placeholder="Customer Service"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Manager</label>
+                <select
+                  value={newUser.managerId}
+                  onChange={(e) => setNewUser({ ...newUser, managerId: e.target.value })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  title="Select manager"
+                >
+                  <option value="">No Manager</option>
+                  {users
+                    .filter(user => ['ADMIN', 'MANAGER', 'TEAM_LEADER'].includes(user.role))
+                    .map(user => (
+                      <option key={user.id} value={user.id}>
+                        {user.firstName} {user.lastName} ({user.role})
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div className="pt-4 flex justify-end space-x-2">
+                <button
+                  onClick={() => setShowCreateUserModal(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={createUser}
+                  className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors"
+                >
+                  Create User
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit User Modal */}
+      {showEditUserModal && editingUser && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Edit User</h3>
+              <button
+                onClick={() => {
+                  setShowEditUserModal(false);
+                  setEditingUser(null);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+                title="Close modal"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Email</label>
+                <input
+                  type="email"
+                  value={editingUser.email}
+                  onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  placeholder="user@company.com"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">First Name</label>
+                  <input
+                    type="text"
+                    value={editingUser.firstName}
+                    onChange={(e) => setEditingUser({ ...editingUser, firstName: e.target.value })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    placeholder="First Name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Last Name</label>
+                  <input
+                    type="text"
+                    value={editingUser.lastName}
+                    onChange={(e) => setEditingUser({ ...editingUser, lastName: e.target.value })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    placeholder="Last Name"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Role</label>
+                <select
+                  value={editingUser.role}
+                  onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  disabled={!canModifyUser(editingUser)}
+                  title="Select user role"
+                >
+                  {getAvailableRoles(session?.user?.role || '').map(role => (
+                    <option key={role} value={role}>{role}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Department</label>
+                <input
+                  type="text"
+                  value={editingUser.department || ''}
+                  onChange={(e) => setEditingUser({ ...editingUser, department: e.target.value })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  placeholder="Customer Service"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Manager</label>
+                <select
+                  value={editingUser.managerId || ''}
+                  onChange={(e) => setEditingUser({ ...editingUser, managerId: e.target.value || undefined })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  disabled={!canModifyUser(editingUser)}
+                  title="Select manager"
+                >
+                  <option value="">No Manager</option>
+                  {users
+                    .filter(user => ['ADMIN', 'MANAGER', 'TEAM_LEADER'].includes(user.role) && user.id !== editingUser.id)
+                    .map(user => (
+                      <option key={user.id} value={user.id}>
+                        {user.firstName} {user.lastName} ({user.role})
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Status</label>
+                <select
+                  value={editingUser.isActive ? 'active' : 'inactive'}
+                  onChange={(e) => setEditingUser({ ...editingUser, isActive: e.target.value === 'active' })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  disabled={!canModifyUser(editingUser)}
+                  title="Select user status"
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+
+              <div className="pt-4 flex justify-end space-x-2">
+                <button
+                  onClick={() => {
+                    setShowEditUserModal(false);
+                    setEditingUser(null);
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => updateUser()}
+                  className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors"
+                >
+                  Update User
                 </button>
               </div>
             </div>

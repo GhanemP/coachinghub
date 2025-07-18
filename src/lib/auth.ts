@@ -55,12 +55,33 @@ export const authOptions: NextAuthOptions = {
     },
     async redirect({ url, baseUrl }) {
       console.log('[NextAuth] redirect callback', { url, baseUrl });
-      if (url === baseUrl + '/login') {
-        return baseUrl + '/';
+      
+      // If user is signing out (url is baseUrl or baseUrl/), redirect to login
+      if (url === baseUrl || url === baseUrl + '/') {
+        return baseUrl + '/login';
       }
-      if (url.startsWith("/")) return `${baseUrl}${url}`;
-      else if (new URL(url).origin === baseUrl) return url;
-      return baseUrl + '/';
+      
+      // If coming from login page after successful sign-in, redirect to team overview
+      if (url === baseUrl + '/login') {
+        return baseUrl + '/team-overview';
+      }
+      
+      // If it's a relative URL, prepend baseUrl
+      if (url.startsWith("/")) {
+        // Don't redirect to team-overview if the user is trying to access login
+        if (url === '/login') {
+          return baseUrl + '/login';
+        }
+        return `${baseUrl}${url}`;
+      }
+      
+      // If it's an absolute URL with the same origin, allow it
+      if (new URL(url).origin === baseUrl) {
+        return url;
+      }
+      
+      // Default fallback to team overview for authenticated users
+      return baseUrl + '/team-overview';
     },
     async jwt({ token, user }) {
       console.log('[NextAuth] jwt callback', { token, user });
@@ -87,6 +108,11 @@ export const authOptions: NextAuthOptions = {
         session.user.lastName = token.lastName as string;
       }
       return session;
+    },
+  },
+  events: {
+    async signOut() {
+      console.log('[NextAuth] signOut event triggered');
     },
   },
   session: {
